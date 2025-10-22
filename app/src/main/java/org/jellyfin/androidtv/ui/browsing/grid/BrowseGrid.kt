@@ -1,5 +1,8 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.app.Activity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,18 +16,29 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.jellyfin.androidtv.constant.ImageType
+import org.jellyfin.androidtv.constant.PosterSize
+import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.base.card.ImageCard
+import org.jellyfin.androidtv.ui.navigation.ActivityDestinations
 import org.jellyfin.sdk.model.api.BaseItemDto
+import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
 import org.koin.compose.koinInject
+import timber.log.Timber
 
 
 @Composable
@@ -32,12 +46,32 @@ fun BrowseGrid(
 	folder: BaseItemDto
 ) {
 	val preferencesRepository = koinInject<PreferencesRepository>()
+	val userViewsRepository = koinInject<UserViewsRepository>()
 	val libraryPreferences = preferencesRepository.getLibraryPreferences(folder.displayPreferencesId ?: "empty_preferences")
+	val allowViewSelection = userViewsRepository.allowViewSelection(folder.collectionType)
 
 	val viewModel: BrowseGridViewModel = viewModel(factory = BrowseGridViewModelFactory(folder, libraryPreferences))
-    val items by viewModel.items.collectAsStateWithLifecycle()
+	val settingsLauncher = rememberLauncherForActivityResult(
+		contract = ActivityResultContracts.StartActivityForResult()
+	) { result ->
+			viewModel.refreshPreferences()
+	}
 
+	val items by viewModel.items.collectAsStateWithLifecycle()
+	val posterSize by viewModel.posterSize.collectAsStateWithLifecycle()
+	val imageType by viewModel.imageType.collectAsStateWithLifecycle()
 
+	var filterState by remember { mutableStateOf(FilterState()) }
+	Timber.i("Проверка!!!")
+
+	val sortOptions = mapOf(
+		0 to SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
+		1 to SortOption("Date Added", ItemSortBy.DATE_CREATED, SortOrder.DESCENDING),
+		2 to SortOption("Premier Date", ItemSortBy.PREMIERE_DATE, SortOrder.DESCENDING)
+	)
+
+	val columns = calculateColumns(posterSize, imageType)
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -46,8 +80,38 @@ fun BrowseGrid(
     ) {
         Text(text = folder.name ?: "", color = Color.White, fontSize = 32.sp)
 
+		BrowseGridToolbar(
+			sortOptions = sortOptions,
+			currentSortBy = ItemSortBy.SORT_NAME,
+			filterState = filterState,
+			showUnwatchedFilter = true,
+			showLetterJump = true,
+			allowViewSelection = true,
+			onSortSelected = { /* Handle sort */ },
+			onUnwatchedToggle = {
+				filterState = filterState.copy(
+					isUnwatchedOnly = !filterState.isUnwatchedOnly
+				)
+			},
+			onFavoriteToggle = {
+				filterState = filterState.copy(
+					isFavoriteOnly = !filterState.isFavoriteOnly
+				)
+			},
+			onLetterJumpClick = { /* Handle letter jump */ },
+			onSettingsClick = {
+				settingsLauncher.launch(
+					ActivityDestinations.displayPreferences(
+						context,
+						folder.displayPreferencesId ?: "empty_preferences",
+						allowViewSelection
+					)
+				)
+			}
+		)
+
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 160.dp),
+            columns = GridCells.Fixed(columns),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp),
@@ -80,6 +144,36 @@ fun BrowseGrid(
             }
         }
     }
+}
+
+private fun calculateColumns(posterSize: PosterSize, imageType: ImageType): Int {
+	return when (posterSize) {
+		PosterSize.SMALLEST -> when (imageType) {
+			ImageType.BANNER -> 6
+			ImageType.THUMB -> 11
+			else -> 15
+		}
+		PosterSize.SMALL -> when (imageType) {
+			ImageType.BANNER -> 5
+			ImageType.THUMB -> 9
+			else -> 13
+		}
+		PosterSize.MED -> when (imageType) {
+			ImageType.BANNER -> 4
+			ImageType.THUMB -> 7
+			else -> 11
+		}
+		PosterSize.LARGE -> when (imageType) {
+			ImageType.BANNER -> 3
+			ImageType.THUMB -> 5
+			else -> 7
+		}
+		PosterSize.X_LARGE -> when (imageType) {
+			ImageType.BANNER -> 2
+			ImageType.THUMB -> 3
+			else -> 5
+		}
+	}
 }
 
 //@Preview(device = Devices.TV_1080p)

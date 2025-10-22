@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jellyfin.androidtv.constant.ImageType
+import org.jellyfin.androidtv.constant.PosterSize
 import org.jellyfin.androidtv.preference.LibraryPreferences
 import org.jellyfin.sdk.model.api.BaseItemDto
 
@@ -17,8 +20,15 @@ class BrowseGridViewModel(
     private val _items = MutableStateFlow<List<Int>>(emptyList())
     val items = _items.asStateFlow()
 
+	private val _posterSize = MutableStateFlow(libraryPreferences.get(LibraryPreferences.posterSize))
+	val posterSize: StateFlow<PosterSize> = _posterSize.asStateFlow()
+
+	private val _imageType = MutableStateFlow(libraryPreferences.get(LibraryPreferences.imageType))
+	val imageType: StateFlow<ImageType> = _imageType.asStateFlow()
+
     init {
         loadItems()
+
     }
 
     fun loadItems() {
@@ -27,6 +37,12 @@ class BrowseGridViewModel(
             // А пока используем тестовые данные
             _items.value = List(20) { it }
         }
+    }
+
+    fun refreshPreferences() {
+        _posterSize.value = libraryPreferences.get(LibraryPreferences.posterSize)
+        _imageType.value = libraryPreferences.get(LibraryPreferences.imageType)
+        loadItems() // Перезагружаем элементы с новыми настройками
     }
 }
 

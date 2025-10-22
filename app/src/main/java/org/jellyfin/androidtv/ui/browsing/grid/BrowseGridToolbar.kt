@@ -73,7 +73,7 @@ fun BrowseGridToolbar(
 		Box {
 			Box(
 				modifier = Modifier
-					.size(48.dp)
+					.size(32.dp)
 					.clickable { showSortMenu = true },
 				contentAlignment = Alignment.Center
 			) {
@@ -120,7 +120,7 @@ fun BrowseGridToolbar(
 		if (showUnwatchedFilter) {
 			Box(
 				modifier = Modifier
-					.size(48.dp)
+					.size(32.dp)
 					.clickable(onClick = onUnwatchedToggle),
 				contentAlignment = Alignment.Center
 			) {
@@ -142,7 +142,7 @@ fun BrowseGridToolbar(
 		// Favorite Filter Button
 		Box(
 			modifier = Modifier
-				.size(48.dp)
+				.size(32.dp)
 				.clickable(onClick = onFavoriteToggle),
 			contentAlignment = Alignment.Center
 		) {
@@ -164,7 +164,7 @@ fun BrowseGridToolbar(
 		if (showLetterJump) {
 			Box(
 				modifier = Modifier
-					.size(48.dp)
+					.size(32.dp)
 					.clickable(onClick = onLetterJumpClick),
 				contentAlignment = Alignment.Center
 			) {
@@ -179,7 +179,7 @@ fun BrowseGridToolbar(
 		// Settings Button
 		Box(
 			modifier = Modifier
-				.size(48.dp)
+				.size(32.dp)
 				.clickable(onClick = onSettingsClick),
 			contentAlignment = Alignment.Center
 		) {
