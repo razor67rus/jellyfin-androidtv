@@ -1,4 +1,4 @@
-package org.jellyfin.androidtv.ui.browsing
+package org.jellyfin.androidtv.ui.browsing.grid
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,7 +9,6 @@ import androidx.fragment.app.Fragment
 import kotlinx.serialization.json.Json
 import org.jellyfin.androidtv.constant.Extras
 import org.jellyfin.sdk.model.api.BaseItemDto
-import org.jellyfin.sdk.model.api.request.GetItemsRequest
 
 class BrowseGridComposeFragment : Fragment() {
 
@@ -26,7 +25,7 @@ class BrowseGridComposeFragment : Fragment() {
         return ComposeView(requireContext()).apply {
             setContent {
                 if (item != null) {
-                    BrowseGrid(title = "qwe")
+                    BrowseGrid(item)
                 } else {
                     // TODO: Показать ошибку или экран загрузки, если элемент не был передан
                 }

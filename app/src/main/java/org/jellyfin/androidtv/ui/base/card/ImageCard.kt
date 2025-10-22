@@ -31,7 +31,7 @@ fun ImageCard(
     image: @Composable BoxScope.() -> Unit,
 ) {
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (isFocused) 1.1f else 1f, label = "scale")
+//    val scale by animateFloatAsState(if (isFocused) 1.05f else 1f, label = "scale")
     val borderColor = if (isFocused) {
         JellyfinTheme.colorScheme.onInputFocused
     } else {
@@ -44,7 +44,7 @@ fun ImageCard(
     ) {
         Column(
             modifier = Modifier
-                .scale(scale)
+//                .scale(scale)
                 .focusable(interactionSource = interactionSource)
                 .clickable(
                     interactionSource = interactionSource,
