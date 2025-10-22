@@ -1,7 +1,6 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import android.app.Activity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.jellyfin.androidtv.constant.GridDirection
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
@@ -38,7 +39,6 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.koin.compose.koinInject
-import timber.log.Timber
 
 
 @Composable
@@ -60,9 +60,9 @@ fun BrowseGrid(
 	val items by viewModel.items.collectAsStateWithLifecycle()
 	val posterSize by viewModel.posterSize.collectAsStateWithLifecycle()
 	val imageType by viewModel.imageType.collectAsStateWithLifecycle()
+	val gridDirection by viewModel.gridDirection.collectAsStateWithLifecycle()
 
 	var filterState by remember { mutableStateOf(FilterState()) }
-	Timber.i("Проверка!!!")
 
 	val sortOptions = mapOf(
 		0 to SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
@@ -70,7 +70,6 @@ fun BrowseGrid(
 		2 to SortOption("Premier Date", ItemSortBy.PREMIERE_DATE, SortOrder.DESCENDING)
 	)
 
-	val columns = calculateColumns(posterSize, imageType)
     val context = LocalContext.current
 
     Column(
@@ -110,40 +109,112 @@ fun BrowseGrid(
 			}
 		)
 
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp),
-            modifier = Modifier
-				.weight(1f)
-				.padding(top = 16.dp)
-        ) {
-            items(items) { item ->
-                ImageCard(
-                    onClick = {},
-                    title = {
-                        Column {
-                            Text(
-                                text = "Item $item",
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(text = "2023", color = Color.Gray)
-                        }
-                    },
-                    image = {
-                        Box(
-                            modifier = Modifier
-								.background(Color.DarkGray)
-								.aspectRatio(2f / 3f)
-                        )
-                    }
-                )
-            }
-        }
+		when (gridDirection) {
+			GridDirection.VERTICAL -> {
+				VerticalBrowseGrid(
+					items = items,
+					posterSize = posterSize,
+					imageType = imageType
+				)
+			}
+			GridDirection.HORIZONTAL -> {
+				HorizontalBrowseGrid(
+					items = items,
+					posterSize = posterSize,
+					imageType = imageType
+				)
+			}
+		}
     }
+}
+
+@Composable
+private fun VerticalBrowseGrid(
+	items: List<Int>,
+	posterSize: PosterSize,
+	imageType: ImageType,
+) {
+	val columns = calculateColumns(posterSize, imageType)
+
+	LazyVerticalGrid(
+		columns = GridCells.Fixed(columns),
+		contentPadding = PaddingValues(16.dp),
+		horizontalArrangement = Arrangement.spacedBy(8.dp),
+		verticalArrangement = Arrangement.spacedBy(8.dp),
+		modifier = Modifier
+			.padding(top = 16.dp)
+	) {
+		items(items) { item ->
+			ImageCard(
+				onClick = {},
+				title = {
+					Column {
+						Text(
+							text = "Item $item",
+							color = Color.White,
+							maxLines = 1,
+							overflow = TextOverflow.Ellipsis
+						)
+						Text(text = "2023", color = Color.Gray)
+					}
+				},
+				image = {
+					Box(
+						modifier = Modifier
+							.background(Color.DarkGray)
+							.aspectRatio(2f / 3f)
+					)
+				}
+			)
+		}
+	}
+}
+
+@Composable
+private fun HorizontalBrowseGrid(
+	items: List<Int>,
+	posterSize: PosterSize,
+	imageType: ImageType,
+
+) {
+	val rows = calculateRows(posterSize, imageType)
+
+	LazyHorizontalGrid(
+		rows = GridCells.Fixed(rows),
+		contentPadding = PaddingValues(16.dp),
+		horizontalArrangement = Arrangement.spacedBy(8.dp),
+		verticalArrangement = Arrangement.spacedBy(8.dp),
+		modifier = Modifier
+			.fillMaxSize()
+			.padding(top = 16.dp)
+	) {
+		items(items) { index ->
+			val item = items[index]
+
+			ImageCard(
+				onClick = {},
+				title = {
+					Column {
+						Text(
+							text = "Item $item",
+							color = Color.White,
+							maxLines = 1,
+							overflow = TextOverflow.Ellipsis
+						)
+						Text(text = "2023", color = Color.Gray)
+					}
+				},
+				image = {
+					Box(
+						modifier = Modifier
+							.background(Color.DarkGray)
+							.aspectRatio(2f / 3f)
+					)
+				}
+			)
+		}
+
+	}
 }
 
 private fun calculateColumns(posterSize: PosterSize, imageType: ImageType): Int {
@@ -172,6 +243,36 @@ private fun calculateColumns(posterSize: PosterSize, imageType: ImageType): Int 
 			ImageType.BANNER -> 2
 			ImageType.THUMB -> 3
 			else -> 5
+		}
+	}
+}
+
+private fun calculateRows(posterSize: PosterSize, imageType: ImageType): Int {
+	return when (posterSize) {
+		PosterSize.SMALLEST -> when (imageType) {
+			ImageType.BANNER -> 13
+			ImageType.THUMB -> 7
+			else -> 5
+		}
+		PosterSize.SMALL -> when (imageType) {
+			ImageType.BANNER -> 11
+			ImageType.THUMB -> 6
+			else -> 4
+		}
+		PosterSize.MED -> when (imageType) {
+			ImageType.BANNER -> 9
+			ImageType.THUMB -> 5
+			else -> 3
+		}
+		PosterSize.LARGE -> when (imageType) {
+			ImageType.BANNER -> 7
+			ImageType.THUMB -> 4
+			else -> 2
+		}
+		PosterSize.X_LARGE -> when (imageType) {
+			ImageType.BANNER -> 5
+			ImageType.THUMB -> 2
+			else -> 1
 		}
 	}
 }
