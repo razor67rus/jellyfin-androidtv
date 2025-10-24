@@ -1,5 +1,6 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
+import android.app.Application
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -8,33 +9,46 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
+
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.jellyfin.androidtv.constant.GridDirection
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
+import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.base.card.ImageCard
+import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
+import org.jellyfin.androidtv.ui.browsing.BrowsingUtils
+import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.ui.navigation.ActivityDestinations
+import org.jellyfin.androidtv.ui.presentation.CardPresenter
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
@@ -47,10 +61,15 @@ fun BrowseGrid(
 ) {
 	val preferencesRepository = koinInject<PreferencesRepository>()
 	val userViewsRepository = koinInject<UserViewsRepository>()
+	val customMessageRepository = koinInject<CustomMessageRepository>()
 	val libraryPreferences = preferencesRepository.getLibraryPreferences(folder.displayPreferencesId ?: "empty_preferences")
 	val allowViewSelection = userViewsRepository.allowViewSelection(folder.collectionType)
 
-	val viewModel: BrowseGridViewModel = viewModel(factory = BrowseGridViewModelFactory(folder, libraryPreferences))
+	val lifecycle = LocalLifecycleOwner.current.lifecycle
+	val context = LocalContext.current
+	val application = remember {context.applicationContext as Application}
+
+	val viewModel: BrowseGridViewModel = viewModel(factory = BrowseGridViewModelFactory(application,folder, libraryPreferences))
 	val settingsLauncher = rememberLauncherForActivityResult(
 		contract = ActivityResultContracts.StartActivityForResult()
 	) { result ->
@@ -58,6 +77,7 @@ fun BrowseGrid(
 	}
 
 	val items by viewModel.items.collectAsStateWithLifecycle()
+	val itemsTest by viewModel.itemsTest.collectAsStateWithLifecycle()
 	val posterSize by viewModel.posterSize.collectAsStateWithLifecycle()
 	val imageType by viewModel.imageType.collectAsStateWithLifecycle()
 	val gridDirection by viewModel.gridDirection.collectAsStateWithLifecycle()
@@ -70,7 +90,22 @@ fun BrowseGrid(
 		2 to SortOption("Premier Date", ItemSortBy.PREMIERE_DATE, SortOrder.DESCENDING)
 	)
 
-    val context = LocalContext.current
+
+	LaunchedEffect(Unit) {
+		val cardHeight = 200 // Calculate based on screen size
+		val cardPresenter = CardPresenter(false, ImageType.POSTER, cardHeight)
+		cardPresenter.setUniformAspect(true)
+
+		val rowDef = BrowseRowDef(
+			"",
+			BrowsingUtils.createBrowseGridItemsRequest(folder),
+			100,
+			false,
+			true
+		)
+
+		viewModel.initializeAdapter(cardPresenter, rowDef, 100, lifecycle)
+	}
 
     Column(
         modifier = Modifier
@@ -130,7 +165,7 @@ fun BrowseGrid(
 
 @Composable
 private fun VerticalBrowseGrid(
-	items: List<Int>,
+	items:  List<BaseRowItem>,
 	posterSize: PosterSize,
 	imageType: ImageType,
 ) {
@@ -150,7 +185,7 @@ private fun VerticalBrowseGrid(
 				title = {
 					Column {
 						Text(
-							text = "Item $item",
+							text = "${item.baseItem?.name}",
 							color = Color.White,
 							maxLines = 1,
 							overflow = TextOverflow.Ellipsis
@@ -172,7 +207,7 @@ private fun VerticalBrowseGrid(
 
 @Composable
 private fun HorizontalBrowseGrid(
-	items: List<Int>,
+	items: List<BaseRowItem>,
 	posterSize: PosterSize,
 	imageType: ImageType,
 
@@ -183,20 +218,19 @@ private fun HorizontalBrowseGrid(
 		rows = GridCells.Fixed(rows),
 		contentPadding = PaddingValues(16.dp),
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
-		verticalArrangement = Arrangement.spacedBy(8.dp),
+//		verticalArrangement = Arrangement.spacedBy(8.dp),
 		modifier = Modifier
-			.fillMaxSize()
+//			.fillMaxSize()
 			.padding(top = 16.dp)
 	) {
-		items(items) { index ->
-			val item = items[index]
 
+		items(items) { item ->
 			ImageCard(
 				onClick = {},
 				title = {
 					Column {
 						Text(
-							text = "Item $item",
+							text = "${item.baseItem?.name}",
 							color = Color.White,
 							maxLines = 1,
 							overflow = TextOverflow.Ellipsis
@@ -207,6 +241,7 @@ private fun HorizontalBrowseGrid(
 				image = {
 					Box(
 						modifier = Modifier
+							.width(60.dp)
 							.background(Color.DarkGray)
 							.aspectRatio(2f / 3f)
 					)
