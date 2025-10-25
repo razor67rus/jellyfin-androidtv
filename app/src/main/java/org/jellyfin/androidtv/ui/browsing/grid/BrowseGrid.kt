@@ -1,6 +1,7 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
 import android.app.Application
+import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -9,10 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,13 +25,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
-
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.jellyfin.androidtv.constant.GridDirection
@@ -46,12 +42,12 @@ import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.base.card.ImageCard
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
 import org.jellyfin.androidtv.ui.browsing.BrowsingUtils
+import org.jellyfin.androidtv.ui.card.ImageCard
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.ui.navigation.ActivityDestinations
 import org.jellyfin.androidtv.ui.presentation.CardPresenter
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ItemSortBy
-import org.jellyfin.sdk.model.api.SortOrder
 import org.koin.compose.koinInject
 
 
@@ -84,16 +80,9 @@ fun BrowseGrid(
 
 	var filterState by remember { mutableStateOf(FilterState()) }
 
-	val sortOptions = mapOf(
-		0 to SortOption("Name", ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
-		1 to SortOption("Date Added", ItemSortBy.DATE_CREATED, SortOrder.DESCENDING),
-		2 to SortOption("Premier Date", ItemSortBy.PREMIERE_DATE, SortOrder.DESCENDING)
-	)
-
-
 	LaunchedEffect(Unit) {
 		val cardHeight = 200 // Calculate based on screen size
-		val cardPresenter = CardPresenter(false, ImageType.POSTER, cardHeight)
+		val cardPresenter = CardPresenter(false, imageType, cardHeight)
 		cardPresenter.setUniformAspect(true)
 
 		val rowDef = BrowseRowDef(
@@ -115,7 +104,7 @@ fun BrowseGrid(
         Text(text = folder.name ?: "", color = Color.White, fontSize = 32.sp)
 
 		BrowseGridToolbar(
-			sortOptions = sortOptions,
+			collectionType = folder.collectionType,
 			currentSortBy = ItemSortBy.SORT_NAME,
 			filterState = filterState,
 			showUnwatchedFilter = true,
@@ -170,6 +159,7 @@ private fun VerticalBrowseGrid(
 	imageType: ImageType,
 ) {
 	val columns = calculateColumns(posterSize, imageType)
+	val context = LocalContext.current
 
 	LazyVerticalGrid(
 		columns = GridCells.Fixed(columns),
@@ -181,26 +171,12 @@ private fun VerticalBrowseGrid(
 	) {
 		items(items) { item ->
 			ImageCard(
-				onClick = {},
-				title = {
-					Column {
-						Text(
-							text = "${item.baseItem?.name}",
-							color = Color.White,
-							maxLines = 1,
-							overflow = TextOverflow.Ellipsis
-						)
-						Text(text = "2023", color = Color.Gray)
-					}
-				},
-				image = {
-					Box(
-						modifier = Modifier
-							.background(Color.DarkGray)
-							.aspectRatio(2f / 3f)
-					)
-				}
-			)
+				item = item,
+				title = item.getCardName(context),
+				contentText = item.getSubText(context)
+			) {
+
+			}
 		}
 	}
 }
@@ -311,6 +287,7 @@ private fun calculateRows(posterSize: PosterSize, imageType: ImageType): Int {
 		}
 	}
 }
+
 
 //@Preview(device = Devices.TV_1080p)
 //@Composable
