@@ -15,13 +15,10 @@ import kotlinx.coroutines.launch
 import org.jellyfin.androidtv.constant.GridDirection
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
-import org.jellyfin.androidtv.constant.QueryType
 import org.jellyfin.androidtv.data.model.FilterOptions
 import org.jellyfin.androidtv.preference.LibraryPreferences
-import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
-import org.jellyfin.androidtv.ui.itemhandling.ItemRowAdapter
 import org.jellyfin.androidtv.ui.itemhandling.ItemRowAdapterWrapper
 import org.jellyfin.androidtv.ui.presentation.CardPresenter
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -49,6 +46,12 @@ class BrowseGridViewModel(
 	private val _gridDirection = MutableStateFlow(libraryPreferences[LibraryPreferences.gridDirection])
 	val gridDirection: StateFlow<GridDirection> = _gridDirection.asStateFlow()
 
+	private  val _filterFavoritesOnly = MutableStateFlow(libraryPreferences[LibraryPreferences.filterFavoritesOnly])
+	val filterFavoritesOnly: StateFlow<Boolean> = _filterFavoritesOnly.asStateFlow()
+
+	private  val _filterUnwatchedOnly = MutableStateFlow(libraryPreferences[LibraryPreferences.filterUnwatchedOnly])
+	val filterUnwatchedOnly: StateFlow<Boolean> = _filterUnwatchedOnly.asStateFlow()
+
 	private val _items = MutableStateFlow<List<BaseRowItem>>(emptyList())
 	val items: StateFlow<List<BaseRowItem>> = _items.asStateFlow()
 
@@ -68,7 +71,7 @@ class BrowseGridViewModel(
 		chunkSize: Int,
 		lifecycle: Lifecycle
 	) {
-		val adapter = createAdapter(cardPresenter, rowDef, chunkSize)
+		val adapter = ItemRowAdapterWrapper.createAdapter(context, libraryPreferences, cardPresenter, rowDef, chunkSize)
 		adapterWrapper = ItemRowAdapterWrapper(adapter, viewModelScope, lifecycle)
 
 		viewModelScope.launch {
@@ -92,58 +95,6 @@ class BrowseGridViewModel(
 		adapterWrapper?.retrieve()
 	}
 
-	private fun createAdapter(
-		cardPresenter: CardPresenter,
-		rowDef: BrowseRowDef,
-		chunkSize: Int
-	): ItemRowAdapter {
-
-		val adapter = when (rowDef.queryType) {
-			QueryType.NextUp -> ItemRowAdapter(
-				context,
-				rowDef.nextUpQuery,
-				true,
-				cardPresenter,
-				null
-			)
-			QueryType.Artists -> ItemRowAdapter(
-				context,
-				rowDef.artistsQuery,
-				chunkSize,
-				cardPresenter,
-				null
-			)
-			QueryType.AlbumArtists -> ItemRowAdapter(
-				context,
-				rowDef.albumArtistsQuery,
-				chunkSize,
-				cardPresenter,
-				null
-			)
-			else -> ItemRowAdapter(
-				context,
-				rowDef.query,
-				chunkSize,
-				rowDef.preferParentThumb,
-				rowDef.isStaticHeight,
-				cardPresenter,
-				null
-			)
-		}
-		// Применяем сохраненные фильтры и сортировку
-		val filters = FilterOptions().apply {
-			isFavoriteOnly = libraryPreferences[LibraryPreferences.filterFavoritesOnly]
-			isUnwatchedOnly = libraryPreferences[LibraryPreferences.filterUnwatchedOnly]
-		}
-		adapter.filters = filters
-
-		val sortBy = libraryPreferences[LibraryPreferences.sortBy]
-		val sortOrder = libraryPreferences[LibraryPreferences.sortOrder]
-		adapter.setSortBy(BrowseGridFragment.SortOption("", sortBy, sortOrder))
-
-		return adapter
-	}
-
     fun loadItemsTest() {
         viewModelScope.launch {
 			_itemsTest.value = List(20) { it }
@@ -156,6 +107,26 @@ class BrowseGridViewModel(
 		_gridDirection.value = libraryPreferences[LibraryPreferences.gridDirection]
 		loadItemsTest() // Перезагружаем элементы с новыми настройками
     }
+
+	fun toggleFavoriteFilter() {
+		viewModelScope.launch {
+			val newValue = !filterFavoritesOnly.value
+			libraryPreferences[LibraryPreferences.filterFavoritesOnly] = newValue
+			_filterFavoritesOnly.value = newValue
+			libraryPreferences.commit()
+			adapterWrapper?.retrieve()
+		}
+	}
+
+	fun toggleUnwatchedOnly() {
+		viewModelScope.launch {
+			val newValue = !filterUnwatchedOnly.value
+			libraryPreferences[LibraryPreferences.filterUnwatchedOnly] = newValue
+			_filterUnwatchedOnly.value = newValue
+			libraryPreferences.commit()
+			adapterWrapper?.retrieve()
+		}
+	}
 }
 
 class BrowseGridViewModelFactory(

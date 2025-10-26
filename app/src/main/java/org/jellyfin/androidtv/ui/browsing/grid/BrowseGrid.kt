@@ -73,15 +73,14 @@ fun BrowseGrid(
 	}
 
 	val items by viewModel.items.collectAsStateWithLifecycle()
-	val itemsTest by viewModel.itemsTest.collectAsStateWithLifecycle()
 	val posterSize by viewModel.posterSize.collectAsStateWithLifecycle()
 	val imageType by viewModel.imageType.collectAsStateWithLifecycle()
 	val gridDirection by viewModel.gridDirection.collectAsStateWithLifecycle()
-
-	var filterState by remember { mutableStateOf(FilterState()) }
+	val filterFavoritesOnly by viewModel.filterFavoritesOnly.collectAsStateWithLifecycle()
+	val filterUnwatchedOnly by viewModel.filterUnwatchedOnly.collectAsStateWithLifecycle()
 
 	LaunchedEffect(Unit) {
-		val cardHeight = 200 // Calculate based on screen size
+		val cardHeight = 200
 		val cardPresenter = CardPresenter(false, imageType, cardHeight)
 		cardPresenter.setUniformAspect(true)
 
@@ -106,20 +105,17 @@ fun BrowseGrid(
 		BrowseGridToolbar(
 			collectionType = folder.collectionType,
 			currentSortBy = ItemSortBy.SORT_NAME,
-			filterState = filterState,
+			filterFavoritesOnly = filterFavoritesOnly,
+			filterUnwatchedOnly = filterUnwatchedOnly,
 			showUnwatchedFilter = true,
 			showLetterJump = true,
 			allowViewSelection = true,
 			onSortSelected = { /* Handle sort */ },
 			onUnwatchedToggle = {
-				filterState = filterState.copy(
-					isUnwatchedOnly = !filterState.isUnwatchedOnly
-				)
+				viewModel.toggleUnwatchedOnly()
 			},
 			onFavoriteToggle = {
-				filterState = filterState.copy(
-					isFavoriteOnly = !filterState.isFavoriteOnly
-				)
+				viewModel.toggleFavoriteFilter()
 			},
 			onLetterJumpClick = { /* Handle letter jump */ },
 			onSettingsClick = {

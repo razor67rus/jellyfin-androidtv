@@ -50,17 +50,13 @@ data class SortOption(
 	val order: SortOrder
 )
 
-data class FilterState(
-	val isUnwatchedOnly: Boolean = false,
-	val isFavoriteOnly: Boolean = false
-)
-
 @Composable
 fun BrowseGridToolbar(
 	modifier: Modifier = Modifier,
 	collectionType: CollectionType?,
 	currentSortBy: ItemSortBy,
-	filterState: FilterState,
+	filterFavoritesOnly: Boolean = false,
+	filterUnwatchedOnly: Boolean = false,
 	showUnwatchedFilter: Boolean = true,
 	showLetterJump: Boolean = true,
 	allowViewSelection: Boolean = true,
@@ -94,7 +90,7 @@ fun BrowseGridToolbar(
 			ToolbarButton(
 				iconRes = R.drawable.ic_unwatch,
 				contentDescription = stringResource(R.string.lbl_unwatched),
-				isActive = filterState.isUnwatchedOnly,
+				isActive = filterUnwatchedOnly,
 				onClick = onUnwatchedToggle
 			)
 		}
@@ -103,7 +99,7 @@ fun BrowseGridToolbar(
 		ToolbarButton(
 			iconRes = R.drawable.ic_heart,
 			contentDescription = stringResource(R.string.lbl_favorite),
-			isActive = filterState.isFavoriteOnly,
+			isActive = filterFavoritesOnly,
 			onClick = onFavoriteToggle
 		)
 
@@ -134,6 +130,42 @@ fun BrowseGridToolbar(
 				onSortSelected(option)
 				showSortDialog = false
 			}
+		)
+	}
+}
+
+@Composable
+private fun ToolbarButton(
+	iconRes: Int,
+	contentDescription: String,
+	isActive: Boolean = false,
+	onClick: () -> Unit
+) {
+	val interactionSource = remember { MutableInteractionSource() }
+	val isFocused by interactionSource.collectIsFocusedAsState()
+
+	Box(
+		modifier = Modifier
+			.size(32.dp)
+			.background(
+				if (isFocused) Color.White.copy(alpha = 0.2f) else Color.Transparent,
+				RoundedCornerShape(4.dp)
+			)
+			.clickable(
+				interactionSource = interactionSource,
+				indication = null,
+				onClick = onClick
+			)
+			.focusable(interactionSource = interactionSource),
+		contentAlignment = Alignment.Center
+	) {
+		Image(
+			painter = painterResource(iconRes),
+			contentDescription = contentDescription,
+			modifier = Modifier.size(26.dp),
+			colorFilter = ColorFilter.tint(
+				if (isActive) Color.Blue else Color.White
+			)
 		)
 	}
 }
@@ -273,41 +305,6 @@ private fun SortOptionItem(
 	}
 }
 
-@Composable
-private fun ToolbarButton(
-	iconRes: Int,
-	contentDescription: String,
-	isActive: Boolean = false,
-	onClick: () -> Unit
-) {
-	val interactionSource = remember { MutableInteractionSource() }
-	val isFocused by interactionSource.collectIsFocusedAsState()
-
-	Box(
-		modifier = Modifier
-			.size(32.dp)
-			.background(
-				if (isFocused) Color.White.copy(alpha = 0.2f) else Color.Transparent,
-				RoundedCornerShape(4.dp)
-			)
-			.clickable(
-				interactionSource = interactionSource,
-				indication = null,
-				onClick = onClick
-			)
-			.focusable(interactionSource = interactionSource),
-		contentAlignment = Alignment.Center
-	) {
-		Image(
-			painter = painterResource(iconRes),
-			contentDescription = contentDescription,
-			modifier = Modifier.size(26.dp),
-			colorFilter = ColorFilter.tint(
-				if (isActive) Color.Blue else Color.White
-			)
-		)
-	}
-}
 
 private fun getSortOptions(context: Context, collectionType: CollectionType?): Map<Int, SortOption> {
 	val sortOptions = mutableMapOf(
