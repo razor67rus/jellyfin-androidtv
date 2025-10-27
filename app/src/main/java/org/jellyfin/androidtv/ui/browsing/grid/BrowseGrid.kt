@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,6 +24,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,7 +41,6 @@ import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.ui.base.Text
-import org.jellyfin.androidtv.ui.base.card.ImageCard
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
 import org.jellyfin.androidtv.ui.browsing.BrowsingUtils
 import org.jellyfin.androidtv.ui.card.ImageCard
@@ -78,6 +79,7 @@ fun BrowseGrid(
 	val gridDirection by viewModel.gridDirection.collectAsStateWithLifecycle()
 	val filterFavoritesOnly by viewModel.filterFavoritesOnly.collectAsStateWithLifecycle()
 	val filterUnwatchedOnly by viewModel.filterUnwatchedOnly.collectAsStateWithLifecycle()
+	val focusRequester = remember { FocusRequester() }
 
 	LaunchedEffect(Unit) {
 		val cardHeight = 200
@@ -93,6 +95,12 @@ fun BrowseGrid(
 		)
 
 		viewModel.initializeAdapter(cardPresenter, rowDef, 100, lifecycle)
+	}
+
+	LaunchedEffect(items) {
+		if (items.isNotEmpty()) {
+			focusRequester.requestFocus()
+		}
 	}
 
     Column(
@@ -134,14 +142,16 @@ fun BrowseGrid(
 				VerticalBrowseGrid(
 					items = items,
 					posterSize = posterSize,
-					imageType = imageType
+					imageType = imageType,
+					focusRequester = focusRequester
 				)
 			}
 			GridDirection.HORIZONTAL -> {
 				HorizontalBrowseGrid(
 					items = items,
 					posterSize = posterSize,
-					imageType = imageType
+					imageType = imageType,
+					focusRequester = focusRequester
 				)
 			}
 		}
@@ -153,6 +163,7 @@ private fun VerticalBrowseGrid(
 	items:  List<BaseRowItem>,
 	posterSize: PosterSize,
 	imageType: ImageType,
+	focusRequester: FocusRequester
 ) {
 	val columns = calculateColumns(posterSize, imageType)
 	val context = LocalContext.current
@@ -165,8 +176,9 @@ private fun VerticalBrowseGrid(
 		modifier = Modifier
 			.padding(top = 16.dp)
 	) {
-		items(items) { item ->
+		itemsIndexed(items) { index, item ->
 			ImageCard(
+				modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
 				item = item,
 				title = item.getCardName(context),
 				contentText = item.getSubText(context)
@@ -182,7 +194,7 @@ private fun HorizontalBrowseGrid(
 	items: List<BaseRowItem>,
 	posterSize: PosterSize,
 	imageType: ImageType,
-
+	focusRequester: FocusRequester
 ) {
 	val rows = calculateRows(posterSize, imageType)
 
@@ -196,8 +208,9 @@ private fun HorizontalBrowseGrid(
 			.padding(top = 16.dp)
 	) {
 
-		items(items) { item ->
-			ImageCard(
+		itemsIndexed(items) { index, item ->
+			org.jellyfin.androidtv.ui.base.card.ImageCard(
+				modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
 				onClick = {},
 				title = {
 					Column {
