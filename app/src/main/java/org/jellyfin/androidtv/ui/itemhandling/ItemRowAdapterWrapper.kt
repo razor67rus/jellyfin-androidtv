@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.jellyfin.androidtv.constant.QueryType
 import org.jellyfin.androidtv.data.model.FilterOptions
+import org.jellyfin.androidtv.data.querying.GetUserViewsRequest
 import org.jellyfin.androidtv.preference.LibraryPreferences
 import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
@@ -36,7 +37,15 @@ class ItemRowAdapterWrapper(
 	private val _error = MutableStateFlow<String?>(null)
 	val error: StateFlow<String?> = _error.asStateFlow()
 
-	// Для Leanback используем DataObserver, не AdapterDataObserver
+	private val _filters = MutableStateFlow<FilterOptions?>(null)
+	val filters: StateFlow<FilterOptions?> = _filters.asStateFlow()
+
+	private val _startLetter = MutableStateFlow<String?>(null)
+	val startLetter: StateFlow<String?> = _startLetter.asStateFlow()
+
+	private val _sortBy = MutableStateFlow<ItemSortBy?>(null)
+	val sortBy: StateFlow<ItemSortBy?> = _sortBy.asStateFlow()
+
 	private val dataObserver = object : ObjectAdapter.DataObserver() {
 		override fun onChanged() {
 			Timber.d("Adapter data changed")
@@ -69,8 +78,9 @@ class ItemRowAdapterWrapper(
 				_isLoading.value = false
 				_totalItems.value = adapter.totalItems
 				_error.value = null
+				_filters.value = adapter.filters
+				_sortBy.value = adapter.sortBy
 				Timber.d("Retrieve finished: itemsLoaded=${adapter.itemsLoaded}, total=${adapter.totalItems}")
-				updateItems()
 			}
 
 			override fun onError(exception: Exception) {
@@ -111,19 +121,21 @@ class ItemRowAdapterWrapper(
 
 	fun setSortBy(sortOption: BrowseGridFragment.SortOption) {
 		adapter.setSortBy(sortOption)
+		_sortBy.value = adapter.sortBy
 	}
 
 	fun setFilters(filters: FilterOptions) {
 		adapter.filters = filters
+		_filters.value = filters
 	}
 
 	fun setStartLetter(letter: String?) {
 		adapter.startLetter = letter
 	}
 
-	fun getFilters(): FilterOptions? = adapter.filters
+	fun getFilters(): FilterOptions? = filters.value
 
-	fun getSortBy(): ItemSortBy = adapter.sortBy
+	fun getSortBy(): ItemSortBy? = sortBy.value
 
 	fun getStartLetter(): String? = adapter.startLetter
 
@@ -153,39 +165,16 @@ class ItemRowAdapterWrapper(
 		): ItemRowAdapter {
 
 			val adapter = when (rowDef.queryType) {
-				QueryType.NextUp -> ItemRowAdapter(
-					context,
-					rowDef.nextUpQuery,
-					true,
-					cardPresenter,
-					null
-				)
-
-				QueryType.Artists -> ItemRowAdapter(
-					context,
-					rowDef.artistsQuery,
-					chunkSize,
-					cardPresenter,
-					null
-				)
-
-				QueryType.AlbumArtists -> ItemRowAdapter(
-					context,
-					rowDef.albumArtistsQuery,
-					chunkSize,
-					cardPresenter,
-					null
-				)
-
-				else -> ItemRowAdapter(
-					context,
-					rowDef.query,
-					chunkSize,
-					rowDef.preferParentThumb,
-					rowDef.isStaticHeight,
-					cardPresenter,
-					null
-				)
+				QueryType.NextUp -> ItemRowAdapter(context, rowDef.nextUpQuery, true, cardPresenter, null)
+				QueryType.Views -> ItemRowAdapter(context, GetUserViewsRequest, cardPresenter, null)
+				QueryType.SimilarSeries -> ItemRowAdapter(context, rowDef.similarQuery, QueryType.SimilarSeries, cardPresenter, null)
+				QueryType.SimilarMovies -> ItemRowAdapter(context, rowDef.similarQuery, QueryType.SimilarMovies, cardPresenter, null)
+				QueryType.LiveTvChannel -> ItemRowAdapter(context, rowDef.tvChannelQuery, 40, cardPresenter, null)
+				QueryType.LiveTvProgram -> ItemRowAdapter(context, rowDef.programQuery, cardPresenter, null);
+				QueryType.LiveTvRecording -> ItemRowAdapter(context, rowDef.recordingQuery, chunkSize, cardPresenter, null);
+				QueryType.Artists -> ItemRowAdapter(context, rowDef.artistsQuery, chunkSize, cardPresenter, null);
+				QueryType.AlbumArtists -> ItemRowAdapter(context, rowDef.albumArtistsQuery, chunkSize, cardPresenter, null);
+				else -> ItemRowAdapter(context, rowDef.query, chunkSize, rowDef.preferParentThumb, rowDef.isStaticHeight, cardPresenter, null);
 			}
 			// Применяем сохраненные фильтры и сортировку
 			val filters = FilterOptions().apply {

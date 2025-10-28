@@ -1,18 +1,18 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
 import android.app.Application
-import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Row
+
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,20 +20,23 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.values
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.constant.GridDirection
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
@@ -49,6 +52,7 @@ import org.jellyfin.androidtv.ui.navigation.ActivityDestinations
 import org.jellyfin.androidtv.ui.presentation.CardPresenter
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ItemSortBy
+import org.jellyfin.sdk.model.api.SortOrder
 import org.koin.compose.koinInject
 
 
@@ -80,6 +84,11 @@ fun BrowseGrid(
 	val filterFavoritesOnly by viewModel.filterFavoritesOnly.collectAsStateWithLifecycle()
 	val filterUnwatchedOnly by viewModel.filterUnwatchedOnly.collectAsStateWithLifecycle()
 	val focusRequester = remember { FocusRequester() }
+	val selectedIndex by viewModel.selectedIndex.collectAsStateWithLifecycle()
+	val totalItems by viewModel.totalItems.collectAsStateWithLifecycle()
+	val startLetter by viewModel.startLetter.collectAsStateWithLifecycle()
+	val sortOption by viewModel.sortOptions.collectAsStateWithLifecycle()
+	val sortBy by viewModel.sortBy.collectAsStateWithLifecycle()
 
 	LaunchedEffect(Unit) {
 		val cardHeight = 200
@@ -108,53 +117,76 @@ fun BrowseGrid(
 			.fillMaxSize()
 			.padding(horizontal = 24.dp)
     ) {
-        Text(text = folder.name ?: "", color = Color.White, fontSize = 32.sp)
+		Column(
+			modifier = Modifier.weight(1f)
+		) {
+			Text(text = folder.name ?: "", color = Color.White, fontSize = 32.sp)
 
-		BrowseGridToolbar(
-			collectionType = folder.collectionType,
-			currentSortBy = ItemSortBy.SORT_NAME,
-			filterFavoritesOnly = filterFavoritesOnly,
-			filterUnwatchedOnly = filterUnwatchedOnly,
-			showUnwatchedFilter = true,
-			showLetterJump = true,
-			allowViewSelection = true,
-			onSortSelected = { /* Handle sort */ },
-			onUnwatchedToggle = {
-				viewModel.toggleUnwatchedOnly()
-			},
-			onFavoriteToggle = {
-				viewModel.toggleFavoriteFilter()
-			},
-			onLetterJumpClick = { /* Handle letter jump */ },
-			onSettingsClick = {
-				settingsLauncher.launch(
-					ActivityDestinations.displayPreferences(
-						context,
-						folder.displayPreferencesId ?: "empty_preferences",
-						allowViewSelection
+			BrowseGridToolbar(
+				sortOptions = sortOption.values.toList(),
+				currentSortBy = sortBy ?: ItemSortBy.SORT_NAME,
+				filterFavoritesOnly = filterFavoritesOnly,
+				filterUnwatchedOnly = filterUnwatchedOnly,
+				showUnwatchedFilter = true,
+				showLetterJump = true,
+				allowViewSelection = allowViewSelection,
+				onSortSelected = { option ->
+					viewModel.setSortBy(option)
+				},
+				onUnwatchedToggle = {
+					viewModel.toggleUnwatchedOnly()
+				},
+				onFavoriteToggle = {
+					viewModel.toggleFavoriteFilter()
+				},
+				onLetterJumpClick = { /* Handle letter jump */ },
+				onSettingsClick = {
+					settingsLauncher.launch(
+						ActivityDestinations.displayPreferences(
+							context,
+							folder.displayPreferencesId ?: "empty_preferences",
+							allowViewSelection
+						)
 					)
-				)
-			}
-		)
+				}
+			)
 
-		when (gridDirection) {
-			GridDirection.VERTICAL -> {
-				VerticalBrowseGrid(
-					items = items,
-					posterSize = posterSize,
-					imageType = imageType,
-					focusRequester = focusRequester
-				)
-			}
-			GridDirection.HORIZONTAL -> {
-				HorizontalBrowseGrid(
-					items = items,
-					posterSize = posterSize,
-					imageType = imageType,
-					focusRequester = focusRequester
-				)
+			when (gridDirection) {
+				GridDirection.VERTICAL -> {
+					VerticalBrowseGrid(
+						items = items,
+						posterSize = posterSize,
+						imageType = imageType,
+						focusRequester = focusRequester,
+						onItemSelected = { index ->
+							viewModel.setSelectedIndex(index)
+						}
+					)
+				}
+
+				GridDirection.HORIZONTAL -> {
+					HorizontalBrowseGrid(
+						items = items,
+						posterSize = posterSize,
+						imageType = imageType,
+						focusRequester = focusRequester,
+						onItemSelected = { index ->
+							viewModel.setSelectedIndex(index)
+						}
+					)
+				}
 			}
 		}
+
+        StatusBar(
+			folderName = folder.name,
+            filterFavoritesOnly = filterFavoritesOnly,
+            filterUnwatchedOnly = filterUnwatchedOnly,
+            focusedIndex = selectedIndex,
+            totalItems = totalItems,
+			startLetter = startLetter,
+			sortBy = sortBy
+        )
     }
 }
 
@@ -163,7 +195,8 @@ private fun VerticalBrowseGrid(
 	items:  List<BaseRowItem>,
 	posterSize: PosterSize,
 	imageType: ImageType,
-	focusRequester: FocusRequester
+	focusRequester: FocusRequester,
+	onItemSelected: (Int) -> Unit
 ) {
 	val columns = calculateColumns(posterSize, imageType)
 	val context = LocalContext.current
@@ -183,7 +216,7 @@ private fun VerticalBrowseGrid(
 				title = item.getCardName(context),
 				contentText = item.getSubText(context)
 			) {
-
+				onItemSelected(index)
 			}
 		}
 	}
@@ -194,47 +227,77 @@ private fun HorizontalBrowseGrid(
 	items: List<BaseRowItem>,
 	posterSize: PosterSize,
 	imageType: ImageType,
-	focusRequester: FocusRequester
+	focusRequester: FocusRequester,
+	onItemSelected: (Int) -> Unit
 ) {
 	val rows = calculateRows(posterSize, imageType)
+	val context = LocalContext.current
 
 	LazyHorizontalGrid(
 		rows = GridCells.Fixed(rows),
 		contentPadding = PaddingValues(16.dp),
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
-//		verticalArrangement = Arrangement.spacedBy(8.dp),
 		modifier = Modifier
 //			.fillMaxSize()
 			.padding(top = 16.dp)
 	) {
 
 		itemsIndexed(items) { index, item ->
-			org.jellyfin.androidtv.ui.base.card.ImageCard(
+			ImageCard(
 				modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
-				onClick = {},
-				title = {
-					Column {
-						Text(
-							text = "${item.baseItem?.name}",
-							color = Color.White,
-							maxLines = 1,
-							overflow = TextOverflow.Ellipsis
-						)
-						Text(text = "2023", color = Color.Gray)
-					}
-				},
-				image = {
-					Box(
-						modifier = Modifier
-							.width(60.dp)
-							.background(Color.DarkGray)
-							.aspectRatio(2f / 3f)
-					)
-				}
-			)
+				item = item,
+				title = item.getCardName(context),
+				contentText = item.getSubText(context)
+			) {
+				onItemSelected(index)
+			}
 		}
 
 	}
+}
+
+@Composable
+private fun StatusBar(
+	folderName: String?,
+	filterFavoritesOnly: Boolean,
+	filterUnwatchedOnly: Boolean,
+	startLetter: String? = null,
+	sortBy: ItemSortBy? = null,
+	sortOptions: Map<Int, SortOption> = emptyMap(),
+	focusedIndex: Int = 0,
+	totalItems: Int = 0,
+) {
+
+	val sortOptionName = sortOptions.values.find { it.value == sortBy }
+		?: SortOption(stringResource(R.string.lbl_bracket_unknown), ItemSortBy.SORT_NAME, SortOrder.ASCENDING)
+
+    Row(
+        modifier = Modifier
+			.fillMaxWidth()
+			.padding(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+
+		Text(
+			text = buildString {
+				append(stringResource(R.string.lbl_showing))
+				if (!filterFavoritesOnly && !filterUnwatchedOnly) append(" " + stringResource(R.string.lbl_all_items))
+				if (filterUnwatchedOnly) append(" " + stringResource(R.string.lbl_unwatched))
+				if (filterFavoritesOnly) append(" " + stringResource(R.string.lbl_favorites))
+				if (startLetter != null) append(" " + stringResource(R.string.lbl_starting_with) + " " + startLetter)
+				if (sortBy != null) append(" " + stringResource(R.string.lbl_from) + " '" + folderName + "' " + stringResource(R.string.lbl_sorted_by) + " " + sortOptionName.name)
+			},
+			color = Color.White,
+			fontSize = 14.sp
+		)
+
+        // Правая часть - всегда счетчик
+        Text(
+            text = "${focusedIndex + 1}|$totalItems",
+            color = Color.White,
+            fontSize = 14.sp
+        )
+    }
 }
 
 private fun calculateColumns(posterSize: PosterSize, imageType: ImageType): Int {
@@ -296,7 +359,6 @@ private fun calculateRows(posterSize: PosterSize, imageType: ImageType): Int {
 		}
 	}
 }
-
 
 //@Preview(device = Devices.TV_1080p)
 //@Composable

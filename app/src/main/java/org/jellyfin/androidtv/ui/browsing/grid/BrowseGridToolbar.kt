@@ -1,6 +1,5 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
-import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,15 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
@@ -39,21 +35,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import org.jellyfin.androidtv.R
-import org.jellyfin.androidtv.ui.base.JellyfinTheme
-import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.ItemSortBy
-import org.jellyfin.sdk.model.api.SortOrder
 
-data class SortOption(
-	val name: String,
-	val value: ItemSortBy,
-	val order: SortOrder
-)
+
+
 
 @Composable
 fun BrowseGridToolbar(
 	modifier: Modifier = Modifier,
-	collectionType: CollectionType?,
+	sortOptions: List<SortOption>,
 	currentSortBy: ItemSortBy,
 	filterFavoritesOnly: Boolean = false,
 	filterUnwatchedOnly: Boolean = false,
@@ -68,8 +58,6 @@ fun BrowseGridToolbar(
 ) {
 	var showSortDialog by remember { mutableStateOf(false) }
 	val context = LocalContext.current
-
-	val sortOptions = getSortOptions(context, collectionType)
 
 	Row(
 		modifier = modifier
@@ -120,10 +108,10 @@ fun BrowseGridToolbar(
 		)
 	}
 
-	// Sort Dialog (более подходит для TV)
+	// Sort Dialog
 	if (showSortDialog) {
 		SortDialog(
-			sortOptions = sortOptions.values.toList(),
+			sortOptions = sortOptions,
 			currentSortBy = currentSortBy,
 			onDismiss = { showSortDialog = false },
 			onSortSelected = { option ->
@@ -303,28 +291,4 @@ private fun SortOptionItem(
 			modifier = Modifier.padding(start = 12.dp)
 		)
 	}
-}
-
-
-private fun getSortOptions(context: Context, collectionType: CollectionType?): Map<Int, SortOption> {
-	val sortOptions = mutableMapOf(
-		0 to SortOption(context.getString(R.string.lbl_name), ItemSortBy.SORT_NAME, SortOrder.ASCENDING),
-		1 to SortOption(context.getString(R.string.lbl_date_added), ItemSortBy.DATE_CREATED, SortOrder.DESCENDING),
-		2 to SortOption(context.getString(R.string.lbl_premier_date), ItemSortBy.PREMIERE_DATE, SortOrder.DESCENDING),
-		3 to SortOption(context.getString(R.string.lbl_rating), ItemSortBy.OFFICIAL_RATING, SortOrder.ASCENDING),
-		4 to SortOption(context.getString(R.string.lbl_community_rating), ItemSortBy.COMMUNITY_RATING, SortOrder.DESCENDING),
-		5 to SortOption(context.getString(R.string.lbl_critic_rating), ItemSortBy.CRITIC_RATING, SortOrder.DESCENDING)
-	)
-
-	if (collectionType == CollectionType.TVSHOWS) {
-		sortOptions[6] = SortOption(context.getString(R.string.lbl_last_played), ItemSortBy.SERIES_DATE_PLAYED, SortOrder.DESCENDING)
-	} else {
-		sortOptions[6] = SortOption(context.getString(R.string.lbl_last_played), ItemSortBy.DATE_PLAYED, SortOrder.DESCENDING)
-	}
-
-	if (collectionType == CollectionType.MOVIES) {
-		sortOptions[7] = SortOption(context.getString(R.string.lbl_runtime), ItemSortBy.RUNTIME, SortOrder.ASCENDING)
-	}
-
-	return sortOptions
 }
