@@ -50,6 +50,7 @@ import org.jellyfin.androidtv.ui.card.ImageCard
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.ui.navigation.ActivityDestinations
 import org.jellyfin.androidtv.ui.presentation.CardPresenter
+import org.jellyfin.androidtv.util.ImageHelper
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
@@ -201,6 +202,7 @@ private fun VerticalBrowseGrid(
 ) {
 	val columns = calculateColumns(posterSize, imageType)
 	val context = LocalContext.current
+	val imageHelper = koinInject<ImageHelper>()
 
 	LazyVerticalGrid(
 		columns = GridCells.Fixed(columns),
@@ -214,11 +216,17 @@ private fun VerticalBrowseGrid(
 			ImageCard(
 				modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
 				item = item,
+				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
 				title = item.getCardName(context),
-				contentText = item.getSubText(context)
-			) {
-				onItemSelected(index)
-			}
+				contentText = item.getSubText(context),
+				onFocus = { hasFocus ->
+					if (hasFocus) {
+						onItemSelected(index)
+					} else {
+
+					}
+				}
+			)
 		}
 	}
 }
@@ -269,8 +277,8 @@ private fun StatusBar(
 	totalItems: Int = 0,
 ) {
 
-	val sortOptionName = sortOptions.values.find { it.value == sortBy }
-		?: SortOption(stringResource(R.string.lbl_bracket_unknown), ItemSortBy.SORT_NAME, SortOrder.ASCENDING);
+	val sortOptionNameUnknown = SortOption(stringResource(R.string.lbl_bracket_unknown), ItemSortBy.SORT_NAME, SortOrder.ASCENDING)
+	val sortOptionName = sortOptions.values.find { it.value == sortBy } ?: sortOptionNameUnknown
 
     Row(
         modifier = Modifier
@@ -279,6 +287,7 @@ private fun StatusBar(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
 
+		// Filter description
 		Text(
 			text = buildString {
 				append(stringResource(R.string.lbl_showing))
@@ -286,13 +295,14 @@ private fun StatusBar(
 				if (filterUnwatchedOnly) append(" " + stringResource(R.string.lbl_unwatched))
 				if (filterFavoritesOnly) append(" " + stringResource(R.string.lbl_favorites))
 				if (startLetter != null) append(" " + stringResource(R.string.lbl_starting_with) + " " + startLetter)
-				if (sortBy != null) append(" " + stringResource(R.string.lbl_from) + " '" + folderName + "' " + stringResource(R.string.lbl_sorted_by) + " " + sortOptionName.name)
+				append(" " + stringResource(R.string.lbl_from) + " '" + folderName + "'")
+				if (sortBy != null) append(" " + stringResource(R.string.lbl_sorted_by) + " " + sortOptionName.name)
 			},
 			color = Color.White,
 			fontSize = 14.sp
 		)
 
-        // Правая часть - всегда счетчик
+        // Counter
         Text(
             text = "${focusedIndex + 1}|$totalItems",
             color = Color.White,

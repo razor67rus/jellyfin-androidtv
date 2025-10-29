@@ -92,14 +92,9 @@ class ItemRowAdapterWrapper(
 	}
 
 	private fun updateItems() {
-		val newItems = mutableListOf<BaseRowItem>()
-		for (i in 0 until adapter.size()) {
-			when (val item = adapter.get(i)) {
-				is BaseRowItem -> newItems.add(item)
-			}
-		}
-		Timber.d("Updated items: ${newItems.size} items in wrapper")
-		_items.value = newItems
+		_items.value = (0 until adapter.size())
+			.mapNotNull { adapter.get(it) as? BaseRowItem }
+			.also { Timber.d("Updated items: ${it.size} items in wrapper") }
 	}
 
 	fun retrieve() {

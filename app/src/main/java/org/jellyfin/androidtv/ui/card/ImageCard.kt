@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -33,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.ui.base.JellyfinTheme
 import org.jellyfin.androidtv.ui.base.Text
@@ -57,7 +59,8 @@ fun ImageCard(
     isPlaying: Boolean = false,
     isFavorite: Boolean = false,
 	onClick: () -> Unit = {},
-    onLongClick: () -> Unit = {}
+    onLongClick: () -> Unit = {},
+	onFocus: (isFocused: Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
 	val nf = remember { NumberFormat.getInstance() }
@@ -71,176 +74,185 @@ fun ImageCard(
 	}
 	val cardShape = RoundedCornerShape(8.dp)
 
+	LaunchedEffect(isFocused) {
+		onFocus(isFocused)
+	}
+
     Box(
         modifier = modifier.padding(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-				.focusable(interactionSource = interactionSource)
-				.border(2.dp, borderColor, cardShape)
-        ) {
-            // Main Image
-            AsyncImage(
-                url = mainImageUrl,
+        Column {
+            Box(
                 modifier = Modifier
 					.fillMaxWidth()
-					.aspectRatio(2f / 3f)
-					.clip(RoundedCornerShape(4.dp)),
-            )
-
-            // Overlay for CARD_TYPE_MAIN_ONLY
-            if (!showInfo && item != null && item.showCardInfoOverlay) {
-                Box(
+					.focusable(interactionSource = interactionSource)
+					.border(2.dp, borderColor, cardShape)
+            ) {
+                // Main Image
+                AsyncImage(
+                    url = mainImageUrl,
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .padding(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val iconRes = when (item.baseItem?.type) {
-                            BaseItemKind.PHOTO -> R.drawable.ic_camera
-                            BaseItemKind.PHOTO_ALBUM -> R.drawable.ic_photos
-                            BaseItemKind.VIDEO -> R.drawable.ic_movie
-                            BaseItemKind.FOLDER -> R.drawable.ic_folder
-                            else -> null
-                        }
+						.fillMaxWidth()
+						.aspectRatio(2f / 3f)
+						.clip(cardShape)
 
-                        if (iconRes != null) {
+                )
+
+                // Overlay for CARD_TYPE_MAIN_ONLY
+                if (!showInfo && item != null && item.showCardInfoOverlay) {
+                    Box(
+                        modifier = Modifier
+							.align(Alignment.BottomCenter)
+							.fillMaxWidth()
+							.background(Color.Black.copy(alpha = 0.7f))
+							.padding(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val iconRes = when (item.baseItem?.type) {
+                                BaseItemKind.PHOTO -> R.drawable.ic_camera
+                                BaseItemKind.PHOTO_ALBUM -> R.drawable.ic_photos
+                                BaseItemKind.VIDEO -> R.drawable.ic_movie
+                                BaseItemKind.FOLDER -> R.drawable.ic_folder
+                                else -> null
+                            }
+
+                            if (iconRes != null) {
+                                Image(
+                                    painter = painterResource(iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+
+                            Text(
+                                text = "${item.getFullName(context)}",
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (item is BaseItemDtoBaseRowItem) {
+                                Text(
+                                    text = item.childCountStr ?: "",
+                                    color = Color.White,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Progress bar
+                if (progress > 0) {
+                    Box(
+                        modifier = Modifier
+							.align(Alignment.BottomCenter)
+							.fillMaxWidth()
+							.height(2.dp)
+							.background(Color.Gray)
+                    ) {
+                        Box(
+                            modifier = Modifier
+								.fillMaxHeight()
+								.fillMaxWidth(progress / 100f)
+								.background(Color.White)
+                        )
+                    }
+                }
+
+                // Watched indicator
+                if (unwatchedCount >= 0) {
+                    Box(
+                        modifier = Modifier
+							.align(Alignment.TopEnd)
+							.padding(4.dp)
+                    ) {
+                        if (unwatchedCount > 0) {
+                            Text(
+                                text = if (unwatchedCount > 99)
+                                    stringResource(R.string.watch_count_overflow)
+                                else
+                                    nf.format(unwatchedCount),
+                                color = Color.White,
+                                modifier = Modifier
+									.background(
+										Color.Black.copy(alpha = 0.7f),
+										RoundedCornerShape(4.dp)
+									)
+									.padding(4.dp)
+                            )
+                        } else if (unwatchedCount == 0) {
                             Image(
-                                painter = painterResource(iconRes),
+                                painter = painterResource(R.drawable.ic_check),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-
-                        Text(
-                            text = "${item.getFullName(context)}",
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        if (item is BaseItemDtoBaseRowItem) {
-                            Text(
-                                text = item.childCountStr ?: "",
-                                color = Color.White,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
                         }
                     }
                 }
-            }
 
-            // Progress bar
-            if (progress > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(2.dp)
-                        .background(Color.Gray)
-                ) {
-                    Box(
+                // Playing indicator
+                if (isPlaying) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_play),
+                        contentDescription = null,
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(progress / 100f)
-                            .background(Color.White)
+							.align(Alignment.TopStart)
+							.padding(4.dp)
+							.size(24.dp)
+                    )
+                }
+
+                // Favorite icon
+                if (isFavorite) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_heart_red),
+                        contentDescription = null,
+                        modifier = Modifier
+							.align(Alignment.TopStart)
+							.padding(4.dp)
+							.size(24.dp)
                     )
                 }
             }
 
-            // Watched indicator
-            if (unwatchedCount >= 0) {
-                Box(
+            // Info section
+            if (showInfo) {
+                Column(
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
+						.fillMaxWidth()
+						.padding(2.dp, vertical = 6.dp)
                 ) {
-                    if (unwatchedCount > 0) {
+                    title?.let {
                         Text(
-                            text = if (unwatchedCount > 99)
-                                stringResource(R.string.watch_count_overflow)
-                            else
-                                nf.format(unwatchedCount),
-                            color = Color.White,
-                            modifier = Modifier
-                                .background(
-                                    Color.Black.copy(alpha = 0.7f),
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(4.dp)
-                        )
-                    } else if (unwatchedCount == 0) {
-                        Image(
-                            painter = painterResource(R.drawable.ic_check),
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
+                            text = it,
+                            maxLines = if (contentText.isNullOrEmpty()) 2 else 1,
+                            overflow = TextOverflow.Ellipsis,
+							color = Color.White,
+							fontSize = 11.sp
                         )
                     }
-                }
-            }
 
-            // Playing indicator
-            if (isPlaying) {
-                Image(
-                    painter = painterResource(R.drawable.ic_play),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(4.dp)
-                        .size(24.dp)
-                )
-            }
+                    contentText?.let {
+                        Text(
+                            text = it,
+                            maxLines = if (title.isNullOrEmpty()) 2 else 1,
+                            overflow = TextOverflow.Ellipsis,
+							color = Color.Gray,
+							fontSize = 11.sp
+                        )
+                    }
 
-            // Favorite icon
-            if (isFavorite) {
-                Image(
-                    painter = painterResource(R.drawable.ic_heart_red),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(4.dp)
-                        .size(24.dp)
-                )
-            }
-        }
-
-        // Info section
-        if (showInfo) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                title?.let {
-                    Text(
-                        text = it,
-                        maxLines = if (contentText.isNullOrEmpty()) 2 else 1,
-                        overflow = TextOverflow.Ellipsis,
-						color = Color.White
-
-                    )
-                }
-
-                contentText?.let {
-                    Text(
-                        text = it,
-                        maxLines = if (title.isNullOrEmpty()) 2 else 1,
-                        overflow = TextOverflow.Ellipsis,
-						color = Color.Gray
-                    )
-                }
-
-                rating?.let {
-                    Text(
-                        text = it,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    rating?.let {
+                        Text(
+							modifier = Modifier.padding(top = 4.dp),
+                            text = it,
+							fontSize = 11.sp
+                        )
+                    }
                 }
             }
         }
