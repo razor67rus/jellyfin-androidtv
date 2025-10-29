@@ -46,31 +46,7 @@ class ItemRowAdapterWrapper(
 	private val _sortBy = MutableStateFlow<ItemSortBy?>(null)
 	val sortBy: StateFlow<ItemSortBy?> = _sortBy.asStateFlow()
 
-	private val dataObserver = object : ObjectAdapter.DataObserver() {
-		override fun onChanged() {
-			Timber.d("Adapter data changed")
-			updateItems()
-		}
-
-		override fun onItemRangeChanged(positionStart: Int, itemCount: Int) {
-			Timber.d("Item range changed: start=$positionStart, count=$itemCount")
-			updateItems()
-		}
-
-		override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
-			Timber.d("Item range inserted: start=$positionStart, count=$itemCount")
-			updateItems()
-		}
-
-		override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-			Timber.d("Item range removed: start=$positionStart, count=$itemCount")
-			updateItems()
-		}
-	}
-
 	init {
-		// Регистрируем observer для Leanback адаптера
-		adapter.registerObserver(dataObserver)
 
 		// Слушаем завершение загрузки
 		adapter.setRetrieveFinishedListener(object : EmptyResponse(lifecycle) {
@@ -80,6 +56,7 @@ class ItemRowAdapterWrapper(
 				_error.value = null
 				_filters.value = adapter.filters
 				_sortBy.value = adapter.sortBy
+				updateItems()
 				Timber.d("Retrieve finished: itemsLoaded=${adapter.itemsLoaded}, total=${adapter.totalItems}")
 			}
 
@@ -111,6 +88,7 @@ class ItemRowAdapterWrapper(
 		}
 
 		Timber.d("Calling adapter.loadMoreItemsIfNeeded for position $position")
+		_isLoading.value = true
 		adapter.loadMoreItemsIfNeeded(position)
 	}
 
@@ -143,11 +121,6 @@ class ItemRowAdapterWrapper(
 			// Логика обновления элемента
 			onComplete()
 		}
-	}
-
-	fun cleanup() {
-		// Отписываемся от observer при уничтожении
-		adapter.unregisterObserver(dataObserver)
 	}
 
 	companion object {

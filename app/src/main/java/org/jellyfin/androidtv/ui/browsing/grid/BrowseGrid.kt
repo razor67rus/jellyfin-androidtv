@@ -55,6 +55,9 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.koin.compose.koinInject
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.foundation.lazy.grid.LazyGridState
 
 
 @Composable
@@ -92,19 +95,7 @@ fun BrowseGrid(
 	val sortBy by viewModel.sortBy.collectAsStateWithLifecycle()
 
 	LaunchedEffect(Unit) {
-		val cardHeight = 200
-		val cardPresenter = CardPresenter(false, imageType, cardHeight)
-		cardPresenter.setUniformAspect(true)
-
-		val rowDef = BrowseRowDef(
-			"",
-			BrowsingUtils.createBrowseGridItemsRequest(folder),
-			100,
-			false,
-			true
-		)
-
-		viewModel.initializeAdapter(cardPresenter, rowDef, 100, lifecycle)
+		viewModel.initializeAdapter(lifecycle)
 	}
 
 	LaunchedEffect(items) {
@@ -194,23 +185,36 @@ fun BrowseGrid(
 
 @Composable
 private fun VerticalBrowseGrid(
-	items:  List<BaseRowItem>,
+	items: List<BaseRowItem>,
 	posterSize: PosterSize,
 	imageType: ImageType,
 	focusRequester: FocusRequester,
-	onItemSelected: (Int) -> Unit
+	onItemSelected: (Int) -> Unit,
+	viewModel: BrowseGridViewModel = viewModel() // Получаем доступ к ViewModel
 ) {
 	val columns = calculateColumns(posterSize, imageType)
 	val context = LocalContext.current
 	val imageHelper = koinInject<ImageHelper>()
+	val gridState = rememberLazyGridState()
+
+	// Отслеживаем прокрутку для пагинации
+	LaunchedEffect(gridState, items) {
+		snapshotFlow {
+			gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+		}.collect { lastVisibleItem ->
+			if (items.isNotEmpty() && lastVisibleItem >= items.size - columns * 2) {
+				viewModel.loadMoreItemsIfNeeded(lastVisibleItem)
+			}
+		}
+	}
 
 	LazyVerticalGrid(
 		columns = GridCells.Fixed(columns),
+		state = gridState,
 		contentPadding = PaddingValues(16.dp),
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
 		verticalArrangement = Arrangement.spacedBy(8.dp),
-		modifier = Modifier
-			.padding(top = 16.dp)
+		modifier = Modifier.padding(top = 16.dp)
 	) {
 		itemsIndexed(items) { index, item ->
 			ImageCard(
@@ -237,29 +241,48 @@ private fun HorizontalBrowseGrid(
 	posterSize: PosterSize,
 	imageType: ImageType,
 	focusRequester: FocusRequester,
-	onItemSelected: (Int) -> Unit
+	onItemSelected: (Int) -> Unit,
+	viewModel: BrowseGridViewModel = viewModel() // Получаем доступ к ViewModel
 ) {
 	val rows = calculateRows(posterSize, imageType)
 	val context = LocalContext.current
+	val imageHelper = koinInject<ImageHelper>()
+	val gridState = rememberLazyGridState()
+
+	// Отслеживаем прокрутку для пагинации
+	LaunchedEffect(gridState, items) {
+		snapshotFlow {
+			gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+		}.collect { lastVisibleItem ->
+			if (items.isNotEmpty() && lastVisibleItem >= items.size - rows * 2) {
+				viewModel.loadMoreItemsIfNeeded(lastVisibleItem)
+			}
+		}
+	}
 
 	LazyHorizontalGrid(
 		rows = GridCells.Fixed(rows),
+		state = gridState,
 		contentPadding = PaddingValues(16.dp),
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
-		modifier = Modifier
-//			.fillMaxSize()
-			.padding(top = 16.dp)
+		modifier = Modifier.padding(top = 16.dp)
 	) {
 
 		itemsIndexed(items) { index, item ->
 			ImageCard(
 				modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
 				item = item,
+				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
 				title = item.getCardName(context),
-				contentText = item.getSubText(context)
-			) {
-				onItemSelected(index)
-			}
+				contentText = item.getSubText(context),
+				onFocus = { hasFocus ->
+					if (hasFocus) {
+						onItemSelected(index)
+					} else {
+
+					}
+				}
+			)
 		}
 
 	}
@@ -371,8 +394,4 @@ private fun calculateRows(posterSize: PosterSize, imageType: ImageType): Int {
 	}
 }
 
-//@Preview(device = Devices.TV_1080p)
-//@Composable
-//fun BrowseGridPreview() {
-//    BrowseGrid(title = "Preview Title", folder = folder)
-//}
+

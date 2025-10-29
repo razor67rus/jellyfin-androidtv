@@ -18,6 +18,7 @@ import org.jellyfin.androidtv.constant.PosterSize
 import org.jellyfin.androidtv.data.model.FilterOptions
 import org.jellyfin.androidtv.preference.LibraryPreferences
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
+import org.jellyfin.androidtv.ui.browsing.BrowsingUtils
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.ui.itemhandling.ItemRowAdapterWrapper
 import org.jellyfin.androidtv.ui.presentation.CardPresenter
@@ -82,20 +83,18 @@ class BrowseGridViewModel(
 	private val _sortOptions = MutableStateFlow<Map<Int, SortOption>>(emptyMap())
 	val sortOptions: StateFlow<Map<Int, SortOption>> = _sortOptions.asStateFlow()
 
-
-
 	init {
 		// 2. Инициализируем опции сортировки в блоке init
 		initializeSortOptions()
 	}
 
-
 	fun initializeAdapter(
-		cardPresenter: CardPresenter,
-		rowDef: BrowseRowDef,
-		chunkSize: Int,
 		lifecycle: Lifecycle
 	) {
+		val chunkSize = 100
+		val cardHeight = 200
+		val cardPresenter = CardPresenter(false, imageType.value, cardHeight)
+		val rowDef = BrowseRowDef("", BrowsingUtils.createBrowseGridItemsRequest(folder), chunkSize, false, true)
 		cardPresenter.setUniformAspect(true); // make grid layouts always uniform
 		val adapter = ItemRowAdapterWrapper.createAdapter(context, libraryPreferences, cardPresenter, rowDef, chunkSize)
 		adapterWrapper = ItemRowAdapterWrapper(adapter, viewModelScope, lifecycle)
@@ -184,6 +183,11 @@ class BrowseGridViewModel(
 //			adapterWrapper?.setSortBy(option.value, option.order)
 //			adapterWrapper?.retrieve()
 //		}
+	}
+
+	fun loadMoreItemsIfNeeded(position: Int) {
+		Timber.d("loadMoreItemsIfNeeded called for position $position")
+		adapterWrapper?.loadMoreItemsIfNeeded(position)
 	}
 
 	private fun initializeSortOptions() {
