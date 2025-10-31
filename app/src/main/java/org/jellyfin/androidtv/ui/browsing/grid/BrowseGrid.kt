@@ -32,7 +32,6 @@ import androidx.compose.ui.res.stringResource
 
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.values
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -44,20 +43,23 @@ import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.ui.base.Text
-import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
-import org.jellyfin.androidtv.ui.browsing.BrowsingUtils
 import org.jellyfin.androidtv.ui.card.ImageCard
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.ui.navigation.ActivityDestinations
-import org.jellyfin.androidtv.ui.presentation.CardPresenter
 import org.jellyfin.androidtv.util.ImageHelper
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.koin.compose.koinInject
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntSize
+import androidx.core.content.ContextCompat
+import org.jellyfin.androidtv.ui.itemhandling.ItemLauncher
+import timber.log.Timber
 
 
 @Composable
@@ -67,6 +69,7 @@ fun BrowseGrid(
 	val preferencesRepository = koinInject<PreferencesRepository>()
 	val userViewsRepository = koinInject<UserViewsRepository>()
 	val customMessageRepository = koinInject<CustomMessageRepository>()
+	val itemLauncher = koinInject<ItemLauncher>()
 	val libraryPreferences = preferencesRepository.getLibraryPreferences(folder.displayPreferencesId ?: "empty_preferences")
 	val allowViewSelection = userViewsRepository.allowViewSelection(folder.collectionType)
 
@@ -74,7 +77,7 @@ fun BrowseGrid(
 	val context = LocalContext.current
 	val application = remember {context.applicationContext as Application}
 
-	val viewModel: BrowseGridViewModel = viewModel(factory = BrowseGridViewModelFactory(application,folder, libraryPreferences))
+	val viewModel: BrowseGridViewModel = viewModel(factory = BrowseGridViewModelFactory(application,folder, libraryPreferences, itemLauncher))
 	val settingsLauncher = rememberLauncherForActivityResult(
 		contract = ActivityResultContracts.StartActivityForResult()
 	) { result ->
@@ -197,6 +200,15 @@ private fun VerticalBrowseGrid(
 	val imageHelper = koinInject<ImageHelper>()
 	val gridState = rememberLazyGridState()
 
+	var cellSize by remember { mutableStateOf(IntSize(100,150)) }
+
+	LaunchedEffect(cellSize) {
+		if (cellSize != null) {
+			// Этот код выполнится, как только размер станет известен
+			Timber.d("CellSize в пикселях: Ширина=${cellSize!!.width}, Высота=${cellSize!!.height}")
+		}
+	}
+
 	// Отслеживаем прокрутку для пагинации
 	LaunchedEffect(gridState, items) {
 		snapshotFlow {
@@ -215,21 +227,22 @@ private fun VerticalBrowseGrid(
 		horizontalArrangement = Arrangement.spacedBy(8.dp),
 		verticalArrangement = Arrangement.spacedBy(8.dp),
 		modifier = Modifier.padding(top = 16.dp)
+
 	) {
 		itemsIndexed(items) { index, item ->
-			ImageCard(
-				modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
-				item = item,
-				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
-				title = item.getCardName(context),
-				contentText = item.getSubText(context),
-				onFocus = { hasFocus ->
-					if (hasFocus) {
-						onItemSelected(index)
-					} else {
-
+			CardPresenter(
+				modifier = Modifier.onGloballyPositioned { coordinates ->
+					// Этот блок выполняется после компоновки.
+					// Сохраняем размер только для первой ячейки, чтобы избежать лишних пересчетов.
+					if (index == 0) {
+						cellSize = coordinates.size
 					}
-				}
+				},
+				item = item,
+				imageUrl = item.getImageUrl(context, imageHelper, imageType, 200,cellSize.height),
+				index = index,
+				onItemSelected = onItemSelected,
+				focusRequester = focusRequester
 			)
 		}
 	}
@@ -269,19 +282,13 @@ private fun HorizontalBrowseGrid(
 	) {
 
 		itemsIndexed(items) { index, item ->
-			ImageCard(
-				modifier = if (index == 0) Modifier.focusRequester(focusRequester) else Modifier,
+			CardPresenter(
+				modifier = Modifier,
 				item = item,
-				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
-				title = item.getCardName(context),
-				contentText = item.getSubText(context),
-				onFocus = { hasFocus ->
-					if (hasFocus) {
-						onItemSelected(index)
-					} else {
-
-					}
-				}
+				imageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
+				index = index,
+				onItemSelected = onItemSelected,
+				focusRequester = focusRequester,
 			)
 		}
 
@@ -333,6 +340,40 @@ private fun StatusBar(
         )
     }
 }
+
+
+@Composable
+private fun CardPresenter(
+	modifier: Modifier,
+	item: BaseRowItem,
+	imageUrl: String?,
+	index: Int,
+	onItemSelected: (Int) -> Unit,
+	focusRequester: FocusRequester,
+	viewModel: BrowseGridViewModel = viewModel()
+) {
+
+	val context = LocalContext.current
+	ImageCard(
+		modifier = if (index == 0) modifier.focusRequester(focusRequester) else modifier,
+		item = item,
+		mainImageUrl = imageUrl,
+		placeholder = ContextCompat.getDrawable(context, R.drawable.ic_movie),
+		title = item.getCardName(context),
+		contentText = item.getSubText(context),
+		isFavorite = item.isFavorite,
+		onFocus = { hasFocus ->
+			if (hasFocus) {
+				onItemSelected(index)
+			}
+		},
+		onClick = {
+			viewModel.onCardClicked(item)
+		}
+	)
+
+}
+
 
 private fun calculateColumns(posterSize: PosterSize, imageType: ImageType): Int {
 	return when (posterSize) {
@@ -393,5 +434,6 @@ private fun calculateRows(posterSize: PosterSize, imageType: ImageType): Int {
 		}
 	}
 }
+
 
 

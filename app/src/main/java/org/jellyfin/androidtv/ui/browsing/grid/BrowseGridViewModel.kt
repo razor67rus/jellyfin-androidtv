@@ -17,9 +17,12 @@ import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
 import org.jellyfin.androidtv.data.model.FilterOptions
 import org.jellyfin.androidtv.preference.LibraryPreferences
+import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
 import org.jellyfin.androidtv.ui.browsing.BrowsingUtils
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
+import org.jellyfin.androidtv.ui.itemhandling.ItemLauncher
+import org.jellyfin.androidtv.ui.itemhandling.ItemRowAdapter
 import org.jellyfin.androidtv.ui.itemhandling.ItemRowAdapterWrapper
 import org.jellyfin.androidtv.ui.presentation.CardPresenter
 import org.jellyfin.sdk.model.api.BaseItemDto
@@ -27,6 +30,8 @@ import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import timber.log.Timber
+
+
 
 data class SortOption(
 	val name: String,
@@ -38,11 +43,14 @@ class BrowseGridViewModel(
 	application: Application,
 	private val folder: BaseItemDto,
 	private val libraryPreferences: LibraryPreferences,
+	private  val itemLauncher: ItemLauncher
 ) : AndroidViewModel(application) {
 
 	private val context: Context get() = getApplication<Application>().applicationContext
 
 	private var adapterWrapper: ItemRowAdapterWrapper? = null
+	private lateinit var adapter: ItemRowAdapter
+
 
 	private val _posterSize = MutableStateFlow(libraryPreferences[LibraryPreferences.posterSize])
 	val posterSize: StateFlow<PosterSize> = _posterSize.asStateFlow()
@@ -92,11 +100,11 @@ class BrowseGridViewModel(
 		lifecycle: Lifecycle
 	) {
 		val chunkSize = 100
-		val cardHeight = 200
+		val cardHeight = 150
 		val cardPresenter = CardPresenter(false, imageType.value, cardHeight)
 		val rowDef = BrowseRowDef("", BrowsingUtils.createBrowseGridItemsRequest(folder), chunkSize, false, true)
 		cardPresenter.setUniformAspect(true); // make grid layouts always uniform
-		val adapter = ItemRowAdapterWrapper.createAdapter(context, libraryPreferences, cardPresenter, rowDef, chunkSize)
+		adapter = ItemRowAdapterWrapper.createAdapter(context, libraryPreferences, cardPresenter, rowDef, chunkSize)
 		adapterWrapper = ItemRowAdapterWrapper(adapter, viewModelScope, lifecycle)
 
 		viewModelScope.launch {
@@ -190,6 +198,10 @@ class BrowseGridViewModel(
 		adapterWrapper?.loadMoreItemsIfNeeded(position)
 	}
 
+	fun onCardClicked(item: BaseRowItem) {
+		itemLauncher.launch(item, adapter, context)
+	}
+
 	private fun initializeSortOptions() {
 
 		val sortOptions = mutableMapOf(
@@ -218,7 +230,8 @@ class BrowseGridViewModel(
 class BrowseGridViewModelFactory(
 	private val application: Application,
 	private val folder: BaseItemDto,
-	private val libraryPreferences: LibraryPreferences
+	private val libraryPreferences: LibraryPreferences,
+	private val itemLauncher: ItemLauncher
 ) : ViewModelProvider.Factory {
 	override fun <T : ViewModel> create(modelClass: Class<T>): T {
 		if (modelClass.isAssignableFrom(BrowseGridViewModel::class.java)) {
@@ -226,7 +239,8 @@ class BrowseGridViewModelFactory(
 			return BrowseGridViewModel(
 				application,
 				folder,
-				libraryPreferences
+				libraryPreferences,
+				itemLauncher
 			) as T
 		}
 		throw IllegalArgumentException("Unknown ViewModel class")

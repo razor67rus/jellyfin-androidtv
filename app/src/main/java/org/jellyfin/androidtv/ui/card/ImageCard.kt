@@ -1,10 +1,12 @@
 package org.jellyfin.androidtv.ui.card
 
 import android.app.Activity
+import android.graphics.drawable.Drawable
 import android.view.KeyEvent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -51,6 +53,7 @@ fun ImageCard(
     showInfo: Boolean = true,
     item: BaseRowItem? = null,
     mainImageUrl: String? = null,
+	placeholder: Drawable? = null,
     title: String? = null,
     contentText: String? = null,
     rating: String? = null,
@@ -85,12 +88,16 @@ fun ImageCard(
             Box(
                 modifier = Modifier
 					.fillMaxWidth()
-					.focusable(interactionSource = interactionSource)
+					.clickable(
+						interactionSource = interactionSource,
+						onClick = onClick,
+					)
 					.border(2.dp, borderColor, cardShape)
             ) {
                 // Main Image
                 AsyncImage(
                     url = mainImageUrl,
+					placeholder = placeholder,
                     modifier = Modifier
 						.fillMaxWidth()
 						.aspectRatio(2f / 3f)
@@ -98,7 +105,7 @@ fun ImageCard(
 
                 )
 
-                // Overlay for CARD_TYPE_MAIN_ONLY
+                // Overlay
                 if (!showInfo && item != null && item.showCardInfoOverlay) {
                     Box(
                         modifier = Modifier
