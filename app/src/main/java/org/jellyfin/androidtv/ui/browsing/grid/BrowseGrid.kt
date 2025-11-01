@@ -53,9 +53,11 @@ import timber.log.Timber
 
 
 @Composable
-fun BrowseGrid(viewModel: BrowseGridViewModel) {
+fun BrowseGrid(folder: BaseItemDto) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
+
+	val viewModel: BrowseGridViewModel = viewModel(factory = BrowseGridViewModelFactory(context, folder))
 
     val folder by viewModel.folder.collectAsStateWithLifecycle()
     val settingsLauncher = rememberLauncherForActivityResult(
@@ -337,7 +339,11 @@ private fun CardPresenter(
 
 	val context = LocalContext.current
 	ImageCard(
-		modifier = if (index == 0) modifier.focusRequester(focusRequester) else modifier,
+		modifier =
+			if (index == 0) {
+			modifier.focusRequester(focusRequester)
+		} else
+			modifier,
 		item = item,
 		mainImageUrl = imageUrl,
 		placeholder = ContextCompat.getDrawable(context, R.drawable.ic_movie),

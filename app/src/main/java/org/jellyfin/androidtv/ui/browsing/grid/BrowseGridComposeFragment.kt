@@ -12,7 +12,6 @@ import org.jellyfin.androidtv.constant.Extras
 import org.jellyfin.sdk.model.api.BaseItemDto
 
 class BrowseGridComposeFragment : Fragment() {
-    private lateinit var viewModel: BrowseGridViewModel
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -24,14 +23,10 @@ class BrowseGridComposeFragment : Fragment() {
             Json.Default.decodeFromString(BaseItemDto.serializer(), it)
         } ?: throw IllegalArgumentException("Item cannot be null")
 
-        viewModel = ViewModelProvider(
-            requireActivity(),
-            BrowseGridViewModelFactory(requireActivity(), item)
-        )[BrowseGridViewModel::class.java]
 
         return ComposeView(requireContext()).apply {
             setContent {
-                BrowseGrid(viewModel = viewModel)
+                BrowseGrid(item)
             }
         }
     }
