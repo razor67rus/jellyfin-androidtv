@@ -22,8 +22,7 @@ import timber.log.Timber
 // Исправленный wrapper для ItemRowAdapter
 class ItemRowAdapterWrapper(
 	private val adapter: ItemRowAdapter,
-	private val coroutineScope: CoroutineScope,
-	private val lifecycle: Lifecycle
+	private val coroutineScope: CoroutineScope
 ) {
 	private val _items = MutableStateFlow<List<BaseRowItem>>(emptyList())
 	val items: StateFlow<List<BaseRowItem>> = _items.asStateFlow()
@@ -46,8 +45,7 @@ class ItemRowAdapterWrapper(
 	private val _sortBy = MutableStateFlow<ItemSortBy?>(null)
 	val sortBy: StateFlow<ItemSortBy?> = _sortBy.asStateFlow()
 
-	init {
-
+	fun setRetrieveListener(lifecycle: Lifecycle) {
 		// Слушаем завершение загрузки
 		adapter.setRetrieveFinishedListener(object : EmptyResponse(lifecycle) {
 			override fun onResponse() {

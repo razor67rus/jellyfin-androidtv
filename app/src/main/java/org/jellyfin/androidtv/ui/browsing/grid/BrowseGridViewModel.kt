@@ -1,8 +1,6 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
-import android.app.Application
 import android.content.Context
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -16,6 +14,8 @@ import org.jellyfin.androidtv.constant.GridDirection
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
 import org.jellyfin.androidtv.data.model.FilterOptions
+import org.jellyfin.androidtv.data.repository.CustomMessageRepository
+import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.preference.LibraryPreferences
 import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
@@ -29,9 +29,10 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
+import org.koin.compose.koinInject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import timber.log.Timber
-
-
 
 data class SortOption(
 	val name: String,
@@ -39,18 +40,41 @@ data class SortOption(
 	val order: SortOrder
 )
 
-class BrowseGridViewModel(
-	application: Application,
+class BrowseGridViewModelFactory(
+	private val context: Context,
 	private val folder: BaseItemDto,
-	private val libraryPreferences: LibraryPreferences,
-	private  val itemLauncher: ItemLauncher
-) : AndroidViewModel(application) {
+) : ViewModelProvider.Factory {
+	override fun <T : ViewModel> create(modelClass: Class<T>): T {
+		if (modelClass.isAssignableFrom(BrowseGridViewModel::class.java)) {
+			@Suppress("UNCHECKED_CAST")
+			return BrowseGridViewModel(
+				context,
+				folder
+			) as T
+		}
+		throw IllegalArgumentException("Unknown ViewModel class")
+	}
+}
 
-	private val context: Context get() = getApplication<Application>().applicationContext
+class BrowseGridViewModel(
+	private val context: Context,
+	folder: BaseItemDto,
+) : ViewModel(), KoinComponent {
+    private val _folder = MutableStateFlow(folder)
+    val folder: StateFlow<BaseItemDto> = _folder.asStateFlow()
+
+    private val preferencesRepository: PreferencesRepository by inject()
+	private val userViewsRepository: UserViewsRepository by inject()
+	private val customMessageRepository: CustomMessageRepository by inject()
+	private val itemLauncher: ItemLauncher by inject()
 
 	private var adapterWrapper: ItemRowAdapterWrapper? = null
 	private lateinit var adapter: ItemRowAdapter
 
+	private val libraryPreferences = preferencesRepository.getLibraryPreferences(folder.displayPreferencesId ?: "empty_preferences")
+
+	private val _allowViewSelection = MutableStateFlow(userViewsRepository.allowViewSelection(folder.collectionType))
+	val allowViewSelection: StateFlow<Boolean> = _allowViewSelection.asStateFlow()
 
 	private val _posterSize = MutableStateFlow(libraryPreferences[LibraryPreferences.posterSize])
 	val posterSize: StateFlow<PosterSize> = _posterSize.asStateFlow()
@@ -92,20 +116,27 @@ class BrowseGridViewModel(
 	val sortOptions: StateFlow<Map<Int, SortOption>> = _sortOptions.asStateFlow()
 
 	init {
-		// 2. Инициализируем опции сортировки в блоке init
+
+		initializeAdapter()
+		initializeAdapterWrapper()
 		initializeSortOptions()
+
 	}
 
-	fun initializeAdapter(
-		lifecycle: Lifecycle
-	) {
+	fun initializeAdapter(){
 		val chunkSize = 100
 		val cardHeight = 150
 		val cardPresenter = CardPresenter(false, imageType.value, cardHeight)
-		val rowDef = BrowseRowDef("", BrowsingUtils.createBrowseGridItemsRequest(folder), chunkSize, false, true)
-		cardPresenter.setUniformAspect(true); // make grid layouts always uniform
+		val rowDef = BrowseRowDef("", BrowsingUtils.createBrowseGridItemsRequest(folder.value), chunkSize, false, true)
+		cardPresenter.setUniformAspect(true);
+
 		adapter = ItemRowAdapterWrapper.createAdapter(context, libraryPreferences, cardPresenter, rowDef, chunkSize)
-		adapterWrapper = ItemRowAdapterWrapper(adapter, viewModelScope, lifecycle)
+	}
+
+
+	fun initializeAdapterWrapper() {
+
+		adapterWrapper = ItemRowAdapterWrapper(adapter, viewModelScope)
 
 		viewModelScope.launch {
 			adapterWrapper?.items?.collect {
@@ -141,7 +172,13 @@ class BrowseGridViewModel(
 			}
 		}
 
-		adapterWrapper?.retrieve()
+		if (_items.value.isEmpty()) {
+			adapterWrapper?.retrieve()
+		}
+	}
+
+	fun setRetrieveListener(lifecycle: Lifecycle) {
+		adapterWrapper?.setRetrieveListener(lifecycle)
 	}
 
     fun refreshPreferences() {
@@ -213,13 +250,13 @@ class BrowseGridViewModel(
 			5 to SortOption(context.getString(R.string.lbl_critic_rating), ItemSortBy.CRITIC_RATING, SortOrder.DESCENDING)
 		)
 
-		if (folder.collectionType == CollectionType.TVSHOWS) {
+		if (folder.value.collectionType == CollectionType.TVSHOWS) {
 			sortOptions[6] = SortOption(context.getString(R.string.lbl_last_played), ItemSortBy.SERIES_DATE_PLAYED, SortOrder.DESCENDING)
 		} else {
 			sortOptions[6] = SortOption(context.getString(R.string.lbl_last_played), ItemSortBy.DATE_PLAYED, SortOrder.DESCENDING)
 		}
 
-		if (folder.collectionType == CollectionType.MOVIES) {
+		if (folder.value.collectionType == CollectionType.MOVIES) {
 			sortOptions[7] = SortOption(context.getString(R.string.lbl_runtime), ItemSortBy.RUNTIME, SortOrder.ASCENDING)
 		}
 
@@ -227,22 +264,4 @@ class BrowseGridViewModel(
 	}
 }
 
-class BrowseGridViewModelFactory(
-	private val application: Application,
-	private val folder: BaseItemDto,
-	private val libraryPreferences: LibraryPreferences,
-	private val itemLauncher: ItemLauncher
-) : ViewModelProvider.Factory {
-	override fun <T : ViewModel> create(modelClass: Class<T>): T {
-		if (modelClass.isAssignableFrom(BrowseGridViewModel::class.java)) {
-			@Suppress("UNCHECKED_CAST")
-			return BrowseGridViewModel(
-				application,
-				folder,
-				libraryPreferences,
-				itemLauncher
-			) as T
-		}
-		throw IllegalArgumentException("Unknown ViewModel class")
-	}
-}
+

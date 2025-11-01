@@ -4,15 +4,12 @@ import android.app.Application
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -20,16 +17,13 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-
 import androidx.compose.runtime.remember
-
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -39,9 +33,6 @@ import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.constant.GridDirection
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.constant.PosterSize
-import org.jellyfin.androidtv.data.repository.CustomMessageRepository
-import org.jellyfin.androidtv.data.repository.UserViewsRepository
-import org.jellyfin.androidtv.preference.PreferencesRepository
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.card.ImageCard
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
@@ -58,54 +49,44 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.ContextCompat
-import org.jellyfin.androidtv.ui.itemhandling.ItemLauncher
 import timber.log.Timber
 
 
 @Composable
-fun BrowseGrid(
-	folder: BaseItemDto
-) {
-	val preferencesRepository = koinInject<PreferencesRepository>()
-	val userViewsRepository = koinInject<UserViewsRepository>()
-	val customMessageRepository = koinInject<CustomMessageRepository>()
-	val itemLauncher = koinInject<ItemLauncher>()
-	val libraryPreferences = preferencesRepository.getLibraryPreferences(folder.displayPreferencesId ?: "empty_preferences")
-	val allowViewSelection = userViewsRepository.allowViewSelection(folder.collectionType)
+fun BrowseGrid(viewModel: BrowseGridViewModel) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val context = LocalContext.current
 
-	val lifecycle = LocalLifecycleOwner.current.lifecycle
-	val context = LocalContext.current
-	val application = remember {context.applicationContext as Application}
+    val folder by viewModel.folder.collectAsStateWithLifecycle()
+    val settingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+            viewModel.refreshPreferences()
+    }
 
-	val viewModel: BrowseGridViewModel = viewModel(factory = BrowseGridViewModelFactory(application,folder, libraryPreferences, itemLauncher))
-	val settingsLauncher = rememberLauncherForActivityResult(
-		contract = ActivityResultContracts.StartActivityForResult()
-	) { result ->
-			viewModel.refreshPreferences()
-	}
+    val allowViewSelection by viewModel.allowViewSelection.collectAsStateWithLifecycle()
+    val items by viewModel.items.collectAsStateWithLifecycle()
+    val posterSize by viewModel.posterSize.collectAsStateWithLifecycle()
+    val imageType by viewModel.imageType.collectAsStateWithLifecycle()
+    val gridDirection by viewModel.gridDirection.collectAsStateWithLifecycle()
+    val filterFavoritesOnly by viewModel.filterFavoritesOnly.collectAsStateWithLifecycle()
+    val filterUnwatchedOnly by viewModel.filterUnwatchedOnly.collectAsStateWithLifecycle()
+    val focusRequester = remember { FocusRequester() }
+    val selectedIndex by viewModel.selectedIndex.collectAsStateWithLifecycle()
+    val totalItems by viewModel.totalItems.collectAsStateWithLifecycle()
+    val startLetter by viewModel.startLetter.collectAsStateWithLifecycle()
+    val sortOption by viewModel.sortOptions.collectAsStateWithLifecycle()
+    val sortBy by viewModel.sortBy.collectAsStateWithLifecycle()
 
-	val items by viewModel.items.collectAsStateWithLifecycle()
-	val posterSize by viewModel.posterSize.collectAsStateWithLifecycle()
-	val imageType by viewModel.imageType.collectAsStateWithLifecycle()
-	val gridDirection by viewModel.gridDirection.collectAsStateWithLifecycle()
-	val filterFavoritesOnly by viewModel.filterFavoritesOnly.collectAsStateWithLifecycle()
-	val filterUnwatchedOnly by viewModel.filterUnwatchedOnly.collectAsStateWithLifecycle()
-	val focusRequester = remember { FocusRequester() }
-	val selectedIndex by viewModel.selectedIndex.collectAsStateWithLifecycle()
-	val totalItems by viewModel.totalItems.collectAsStateWithLifecycle()
-	val startLetter by viewModel.startLetter.collectAsStateWithLifecycle()
-	val sortOption by viewModel.sortOptions.collectAsStateWithLifecycle()
-	val sortBy by viewModel.sortBy.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        viewModel.setRetrieveListener(lifecycle)
+    }
 
-	LaunchedEffect(Unit) {
-		viewModel.initializeAdapter(lifecycle)
-	}
-
-	LaunchedEffect(items) {
-		if (items.isNotEmpty()) {
-			focusRequester.requestFocus()
-		}
-	}
+    LaunchedEffect(items) {
+        if (items.isNotEmpty()) {
+            focusRequester.requestFocus()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -155,7 +136,8 @@ fun BrowseGrid(
 						focusRequester = focusRequester,
 						onItemSelected = { index ->
 							viewModel.setSelectedIndex(index)
-						}
+						},
+						viewModel = viewModel // Передаем viewModel как параметр
 					)
 				}
 
@@ -167,7 +149,8 @@ fun BrowseGrid(
 						focusRequester = focusRequester,
 						onItemSelected = { index ->
 							viewModel.setSelectedIndex(index)
-						}
+						},
+						viewModel = viewModel // Передаем viewModel как параметр
 					)
 				}
 			}
@@ -193,20 +176,17 @@ private fun VerticalBrowseGrid(
 	imageType: ImageType,
 	focusRequester: FocusRequester,
 	onItemSelected: (Int) -> Unit,
-	viewModel: BrowseGridViewModel = viewModel() // Получаем доступ к ViewModel
+	viewModel: BrowseGridViewModel
 ) {
 	val columns = calculateColumns(posterSize, imageType)
 	val context = LocalContext.current
 	val imageHelper = koinInject<ImageHelper>()
 	val gridState = rememberLazyGridState()
 
-	var cellSize by remember { mutableStateOf(IntSize(100,150)) }
+	var cellSize by remember { mutableStateOf(IntSize(100, 150)) }
 
 	LaunchedEffect(cellSize) {
-		if (cellSize != null) {
-			// Этот код выполнится, как только размер станет известен
-			Timber.d("CellSize в пикселях: Ширина=${cellSize!!.width}, Высота=${cellSize!!.height}")
-		}
+		Timber.d("CellSize в пикселях: Ширина=${cellSize.width}, Высота=${cellSize.height}")
 	}
 
 	// Отслеживаем прокрутку для пагинации
@@ -242,7 +222,8 @@ private fun VerticalBrowseGrid(
 				imageUrl = item.getImageUrl(context, imageHelper, imageType, 200,cellSize.height),
 				index = index,
 				onItemSelected = onItemSelected,
-				focusRequester = focusRequester
+				focusRequester = focusRequester,
+				viewModel = viewModel // Передаем viewModel как параметр
 			)
 		}
 	}
@@ -255,7 +236,7 @@ private fun HorizontalBrowseGrid(
 	imageType: ImageType,
 	focusRequester: FocusRequester,
 	onItemSelected: (Int) -> Unit,
-	viewModel: BrowseGridViewModel = viewModel() // Получаем доступ к ViewModel
+	viewModel: BrowseGridViewModel // Получаем доступ к ViewModel
 ) {
 	val rows = calculateRows(posterSize, imageType)
 	val context = LocalContext.current
@@ -289,6 +270,7 @@ private fun HorizontalBrowseGrid(
 				index = index,
 				onItemSelected = onItemSelected,
 				focusRequester = focusRequester,
+				viewModel = viewModel // Передаем viewModel как параметр
 			)
 		}
 
@@ -350,7 +332,7 @@ private fun CardPresenter(
 	index: Int,
 	onItemSelected: (Int) -> Unit,
 	focusRequester: FocusRequester,
-	viewModel: BrowseGridViewModel = viewModel()
+	viewModel: BrowseGridViewModel // Получаем доступ к ViewModel
 ) {
 
 	val context = LocalContext.current
@@ -434,6 +416,3 @@ private fun calculateRows(posterSize: PosterSize, imageType: ImageType): Int {
 		}
 	}
 }
-
-
-
