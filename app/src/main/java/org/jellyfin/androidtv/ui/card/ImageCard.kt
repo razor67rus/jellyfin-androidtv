@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -45,11 +46,12 @@ import org.jellyfin.androidtv.ui.itemhandling.BaseItemDtoBaseRowItem
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.util.getActivity
 import org.jellyfin.sdk.model.api.BaseItemKind
+import timber.log.Timber
 import java.text.NumberFormat
 
 @Composable
 fun ImageCard(
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
     showInfo: Boolean = true,
     item: BaseRowItem? = null,
     mainImageUrl: String? = null,
@@ -77,22 +79,22 @@ fun ImageCard(
 	}
 	val cardShape = RoundedCornerShape(8.dp)
 
-	LaunchedEffect(isFocused) {
-		onFocus(isFocused)
-	}
-
     Box(
-        modifier = modifier.padding(8.dp)
+        modifier = modifier
+			.onFocusChanged{ onFocus(it.isFocused) }
+			.clickable(
+				onClick = onClick,
+				indication = null,
+				interactionSource = interactionSource,
+			)
+			.focusable(interactionSource = interactionSource)
+
     ) {
         Column {
             Box(
                 modifier = Modifier
 					.fillMaxWidth()
-					.clickable(
-						interactionSource = interactionSource,
-						onClick = onClick,
-					)
-					.border(2.dp, borderColor, cardShape)
+					.border(3.dp, borderColor, cardShape)
             ) {
                 // Main Image
                 AsyncImage(
