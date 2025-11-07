@@ -134,7 +134,7 @@ private fun ToolbarButton(
 
 	Box(
 		modifier = Modifier
-			.size(32.dp)
+			.size(18.dp)
 			.background(
 				if (isFocused) Color.White.copy(alpha = 0.2f) else Color.Transparent,
 				RoundedCornerShape(4.dp)

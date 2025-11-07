@@ -1,8 +1,8 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
-import android.app.Application
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -46,14 +46,22 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import timber.log.Timber
 
 
 @Composable
-fun BrowseGrid(folder: BaseItemDto) {
+fun BrowseGrid(
+	folder: BaseItemDto
+) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
 
@@ -73,22 +81,19 @@ fun BrowseGrid(folder: BaseItemDto) {
     val gridDirection by viewModel.gridDirection.collectAsStateWithLifecycle()
     val filterFavoritesOnly by viewModel.filterFavoritesOnly.collectAsStateWithLifecycle()
     val filterUnwatchedOnly by viewModel.filterUnwatchedOnly.collectAsStateWithLifecycle()
-    val focusRequester = remember { FocusRequester() }
     val selectedIndex by viewModel.selectedIndex.collectAsStateWithLifecycle()
     val totalItems by viewModel.totalItems.collectAsStateWithLifecycle()
     val startLetter by viewModel.startLetter.collectAsStateWithLifecycle()
     val sortOption by viewModel.sortOptions.collectAsStateWithLifecycle()
     val sortBy by viewModel.sortBy.collectAsStateWithLifecycle()
 
+	val focusRequester = remember { FocusRequester() }
+	val gridFocusRequester = remember { FocusRequester() }
+
     LaunchedEffect(Unit) {
         viewModel.setRetrieveListener(lifecycle)
     }
 
-    LaunchedEffect(items) {
-        if (items.isNotEmpty()) {
-            focusRequester.requestFocus()
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -98,36 +103,44 @@ fun BrowseGrid(folder: BaseItemDto) {
 		Column(
 			modifier = Modifier.weight(1f)
 		) {
-			Text(text = folder.name ?: "", color = Color.White, fontSize = 32.sp)
+			Row(
+				modifier = Modifier
+					.fillMaxWidth()
+					.padding(vertical = 12.dp),
+				horizontalArrangement = Arrangement.SpaceBetween,
+				verticalAlignment = Alignment.Bottom
+			) {
+				Text(text = folder.name ?: "", color = Color.White, fontSize = 32.sp)
 
-			BrowseGridToolbar(
-				sortOptions = sortOption.values.toList(),
-				currentSortBy = sortBy ?: ItemSortBy.SORT_NAME,
-				filterFavoritesOnly = filterFavoritesOnly,
-				filterUnwatchedOnly = filterUnwatchedOnly,
-				showUnwatchedFilter = true,
-				showLetterJump = true,
-				allowViewSelection = allowViewSelection,
-				onSortSelected = { option ->
-					viewModel.setSortBy(option)
-				},
-				onUnwatchedToggle = {
-					viewModel.toggleUnwatchedOnly()
-				},
-				onFavoriteToggle = {
-					viewModel.toggleFavoriteFilter()
-				},
-				onLetterJumpClick = { /* Handle letter jump */ },
-				onSettingsClick = {
-					settingsLauncher.launch(
-						ActivityDestinations.displayPreferences(
-							context,
-							folder.displayPreferencesId ?: "empty_preferences",
-							allowViewSelection
+				BrowseGridToolbar(
+					sortOptions = sortOption.values.toList(),
+					currentSortBy = sortBy ?: ItemSortBy.SORT_NAME,
+					filterFavoritesOnly = filterFavoritesOnly,
+					filterUnwatchedOnly = filterUnwatchedOnly,
+					showUnwatchedFilter = true,
+					showLetterJump = true,
+					allowViewSelection = allowViewSelection,
+					onSortSelected = { option ->
+						viewModel.setSortBy(option)
+					},
+					onUnwatchedToggle = {
+						viewModel.toggleUnwatchedOnly()
+					},
+					onFavoriteToggle = {
+						viewModel.toggleFavoriteFilter()
+					},
+					onLetterJumpClick = { /* Handle letter jump */ },
+					onSettingsClick = {
+						settingsLauncher.launch(
+							ActivityDestinations.displayPreferences(
+								context,
+								folder.displayPreferencesId ?: "empty_preferences",
+								allowViewSelection
+							)
 						)
-					)
-				}
-			)
+					}
+				)
+			}
 
 			when (gridDirection) {
 				GridDirection.VERTICAL -> {
@@ -136,10 +149,11 @@ fun BrowseGrid(folder: BaseItemDto) {
 						posterSize = posterSize,
 						imageType = imageType,
 						focusRequester = focusRequester,
+						gridFocusRequester = gridFocusRequester,
 						onItemSelected = { index ->
 							viewModel.setSelectedIndex(index)
 						},
-						viewModel = viewModel // Передаем viewModel как параметр
+						viewModel = viewModel
 					)
 				}
 
@@ -152,7 +166,7 @@ fun BrowseGrid(folder: BaseItemDto) {
 						onItemSelected = { index ->
 							viewModel.setSelectedIndex(index)
 						},
-						viewModel = viewModel // Передаем viewModel как параметр
+						viewModel = viewModel
 					)
 				}
 			}
@@ -177,6 +191,7 @@ private fun VerticalBrowseGrid(
 	posterSize: PosterSize,
 	imageType: ImageType,
 	focusRequester: FocusRequester,
+	gridFocusRequester: FocusRequester,
 	onItemSelected: (Int) -> Unit,
 	viewModel: BrowseGridViewModel
 ) {
@@ -189,6 +204,14 @@ private fun VerticalBrowseGrid(
 
 	LaunchedEffect(cellSize) {
 		Timber.d("CellSize в пикселях: Ширина=${cellSize.width}, Высота=${cellSize.height}")
+	}
+
+	LaunchedEffect(gridState) {
+//		Ожидание первой видимой ячейки для установки фокуса
+		snapshotFlow { gridState.layoutInfo.visibleItemsInfo.isNotEmpty() }
+			.filter { it }
+			.first()
+			gridFocusRequester.requestFocus()
 	}
 
 	// Отслеживаем прокрутку для пагинации
@@ -205,27 +228,41 @@ private fun VerticalBrowseGrid(
 	LazyVerticalGrid(
 		columns = GridCells.Fixed(columns),
 		state = gridState,
-		contentPadding = PaddingValues(16.dp),
-		horizontalArrangement = Arrangement.spacedBy(8.dp),
-		verticalArrangement = Arrangement.spacedBy(8.dp),
-		modifier = Modifier.padding(top = 16.dp)
+		horizontalArrangement = Arrangement.spacedBy(16.dp),
+		verticalArrangement = Arrangement.spacedBy(12.dp),
+		modifier = Modifier
+			.focusGroup()
+			.focusRequester(gridFocusRequester)
+			.focusRestorer(gridFocusRequester)
 
 	) {
-		itemsIndexed(items) { index, item ->
-			CardPresenter(
-				modifier = Modifier.onGloballyPositioned { coordinates ->
-					// Этот блок выполняется после компоновки.
-					// Сохраняем размер только для первой ячейки, чтобы избежать лишних пересчетов.
+		itemsIndexed(items, key = { _, item -> item.itemId.toString()})
+		{ index, item ->
+			ImageCard(
+				modifier =
 					if (index == 0) {
-						cellSize = coordinates.size
+						Modifier
+							.focusRequester(focusRequester)
+							.onGloballyPositioned { coordinates ->
+							cellSize = coordinates.size
+						}
+					} else
+						Modifier,
+				item = item,
+				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,cellSize.height),
+				placeholder = ContextCompat.getDrawable(context, R.drawable.ic_movie),
+				title = item.getCardName(context),
+				contentText = item.getSubText(context),
+				isFavorite = item.isFavorite,
+				onFocus = { hasFocus ->
+					if (hasFocus) {
+						onItemSelected(index)
 					}
 				},
-				item = item,
-				imageUrl = item.getImageUrl(context, imageHelper, imageType, 200,cellSize.height),
-				index = index,
-				onItemSelected = onItemSelected,
-				focusRequester = focusRequester,
-				viewModel = viewModel // Передаем viewModel как параметр
+				onClick = {
+					gridFocusRequester.saveFocusedChild()
+					viewModel.onCardClicked(item)
+				}
 			)
 		}
 	}
@@ -334,16 +371,16 @@ private fun CardPresenter(
 	index: Int,
 	onItemSelected: (Int) -> Unit,
 	focusRequester: FocusRequester,
-	viewModel: BrowseGridViewModel // Получаем доступ к ViewModel
+	viewModel: BrowseGridViewModel
 ) {
 
 	val context = LocalContext.current
 	ImageCard(
 		modifier =
-			if (index == 0) {
-			modifier.focusRequester(focusRequester)
-		} else
-			modifier,
+//			if (index == 0) {
+//				modifier.focusRequester(focusRequester)
+//			} else
+				modifier,
 		item = item,
 		mainImageUrl = imageUrl,
 		placeholder = ContextCompat.getDrawable(context, R.drawable.ic_movie),
@@ -356,6 +393,7 @@ private fun CardPresenter(
 			}
 		},
 		onClick = {
+			focusRequester.saveFocusedChild()
 			viewModel.onCardClicked(item)
 		}
 	)
