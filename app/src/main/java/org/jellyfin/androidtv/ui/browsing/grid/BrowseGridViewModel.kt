@@ -1,6 +1,7 @@
 package org.jellyfin.androidtv.ui.browsing.grid
 
 import android.content.Context
+import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -114,6 +115,9 @@ class BrowseGridViewModel(
 
 	private val _sortOptions = MutableStateFlow<Map<Int, SortOption>>(emptyMap())
 	val sortOptions: StateFlow<Map<Int, SortOption>> = _sortOptions.asStateFlow()
+
+	private val _imageSize = MutableStateFlow<IntSize>(IntSize(100,150))
+	val imageSize: StateFlow<IntSize> = _imageSize.asStateFlow()
 
 	init {
 
@@ -237,6 +241,10 @@ class BrowseGridViewModel(
 
 	fun onCardClicked(item: BaseRowItem) {
 		itemLauncher.launch(item, adapter, context)
+	}
+
+	fun setImageSize(size: IntSize) {
+		_imageSize.value = size
 	}
 
 	private fun initializeSortOptions() {

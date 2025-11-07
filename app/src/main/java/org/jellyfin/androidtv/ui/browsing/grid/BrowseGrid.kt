@@ -200,10 +200,10 @@ private fun VerticalBrowseGrid(
 	val imageHelper = koinInject<ImageHelper>()
 	val gridState = rememberLazyGridState()
 
-	var cellSize by remember { mutableStateOf(IntSize(100, 150)) }
+	val imageSize by viewModel.imageSize.collectAsStateWithLifecycle()
 
+	// Ожидание первой видимой ячейки для установки фокуса
 	LaunchedEffect(gridState) {
-//		Ожидание первой видимой ячейки для установки фокуса
 		snapshotFlow { gridState.layoutInfo.visibleItemsInfo.isNotEmpty() }
 			.filter { it }
 			.first()
@@ -230,8 +230,6 @@ private fun VerticalBrowseGrid(
 			.focusGroup()
 			.focusRestorer()
 			.focusRequester(gridFocusRequester)
-
-
 	) {
 		itemsIndexed(items, key = { _, item -> item.itemId.toString()})
 		{ index, item ->
@@ -240,12 +238,12 @@ private fun VerticalBrowseGrid(
 					if (index == 0) {
 						Modifier
 							.onGloballyPositioned { coordinates ->
-							cellSize = coordinates.size
+								viewModel.setImageSize(coordinates.size)
 						}
 					} else
 						Modifier,
 				item = item,
-				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,cellSize.height),
+				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,imageSize.height),
 				placeholder = ContextCompat.getDrawable(context, R.drawable.ic_movie),
 				title = item.getCardName(context),
 				contentText = item.getSubText(context),
@@ -271,7 +269,7 @@ private fun HorizontalBrowseGrid(
 	imageType: ImageType,
 	focusRequester: FocusRequester,
 	onItemSelected: (Int) -> Unit,
-	viewModel: BrowseGridViewModel // Получаем доступ к ViewModel
+	viewModel: BrowseGridViewModel
 ) {
 	val rows = calculateRows(posterSize, imageType)
 	val context = LocalContext.current
