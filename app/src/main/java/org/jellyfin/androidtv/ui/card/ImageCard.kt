@@ -3,6 +3,7 @@ package org.jellyfin.androidtv.ui.card
 import android.app.Activity
 import android.graphics.drawable.Drawable
 import android.view.KeyEvent
+import android.widget.ImageView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -46,25 +46,26 @@ import org.jellyfin.androidtv.ui.itemhandling.BaseItemDtoBaseRowItem
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import org.jellyfin.androidtv.util.getActivity
 import org.jellyfin.sdk.model.api.BaseItemKind
-import timber.log.Timber
 import java.text.NumberFormat
 
 @Composable
 fun ImageCard(
-    modifier: Modifier,
-    showInfo: Boolean = true,
-    item: BaseRowItem? = null,
-    mainImageUrl: String? = null,
+	modifier: Modifier,
+	showInfo: Boolean = true,
+	item: BaseRowItem? = null,
+	mainImageUrl: String? = null,
+	aspectRatio: Float = 2f / 3f,
+	scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP,
 	placeholder: Drawable? = null,
-    title: String? = null,
-    contentText: String? = null,
-    rating: String? = null,
-    unwatchedCount: Int = -1,
-    progress: Int = 0,
-    isPlaying: Boolean = false,
-    isFavorite: Boolean = false,
+	title: String? = null,
+	contentText: String? = null,
+	rating: String? = null,
+	unwatchedCount: Int = -1,
+	progress: Int = 0,
+	isPlaying: Boolean = false,
+	isFavorite: Boolean = false,
 	onClick: () -> Unit = {},
-    onLongClick: () -> Unit = {},
+	onLongClick: () -> Unit = {},
 	onFocus: (isFocused: Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -81,7 +82,7 @@ fun ImageCard(
 
     Box(
         modifier = modifier
-			.onFocusChanged{ onFocus(it.isFocused) }
+			.onFocusChanged { onFocus(it.isFocused) }
 			.clickable(
 				onClick = onClick,
 				indication = null,
@@ -100,11 +101,11 @@ fun ImageCard(
                 AsyncImage(
                     url = mainImageUrl,
 					placeholder = placeholder,
+					scaleType = scaleType,
                     modifier = Modifier
 						.fillMaxWidth()
-						.aspectRatio(2f / 3f)
+						.aspectRatio(aspectRatio)
 						.clip(cardShape)
-
                 )
 
                 // Overlay

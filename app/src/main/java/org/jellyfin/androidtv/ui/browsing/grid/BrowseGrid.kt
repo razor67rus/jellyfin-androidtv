@@ -55,6 +55,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import org.jellyfin.androidtv.ui.card.ImageCardHelper
 import timber.log.Timber
 
 
@@ -88,7 +89,6 @@ fun BrowseGrid(
     val sortBy by viewModel.sortBy.collectAsStateWithLifecycle()
 
 	val focusRequester = remember { FocusRequester() }
-	val gridFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         viewModel.setRetrieveListener(lifecycle)
@@ -149,7 +149,6 @@ fun BrowseGrid(
 						posterSize = posterSize,
 						imageType = imageType,
 						focusRequester = focusRequester,
-						gridFocusRequester = gridFocusRequester,
 						onItemSelected = { index ->
 							viewModel.setSelectedIndex(index)
 						},
@@ -191,7 +190,6 @@ private fun VerticalBrowseGrid(
 	posterSize: PosterSize,
 	imageType: ImageType,
 	focusRequester: FocusRequester,
-	gridFocusRequester: FocusRequester,
 	onItemSelected: (Int) -> Unit,
 	viewModel: BrowseGridViewModel
 ) {
@@ -207,7 +205,7 @@ private fun VerticalBrowseGrid(
 		snapshotFlow { gridState.layoutInfo.visibleItemsInfo.isNotEmpty() }
 			.filter { it }
 			.first()
-			gridFocusRequester.requestFocus()
+		focusRequester.requestFocus()
 	}
 
 	// Отслеживаем прокрутку для пагинации
@@ -229,34 +227,19 @@ private fun VerticalBrowseGrid(
 		modifier = Modifier
 			.focusGroup()
 			.focusRestorer()
-			.focusRequester(gridFocusRequester)
+			.focusRequester(focusRequester)
 	) {
 		itemsIndexed(items, key = { _, item -> item.itemId.toString()})
 		{ index, item ->
-			ImageCard(
-				modifier =
-					if (index == 0) {
-						Modifier
-							.onGloballyPositioned { coordinates ->
-								viewModel.setImageSize(coordinates.size)
-						}
-					} else
-						Modifier,
+			BrowseGridItem(
+				modifier = Modifier,
 				item = item,
-				mainImageUrl = item.getImageUrl(context, imageHelper, imageType, 200,imageSize.height),
-				placeholder = ContextCompat.getDrawable(context, R.drawable.ic_movie),
-				title = item.getCardName(context),
-				contentText = item.getSubText(context),
-				isFavorite = item.isFavorite,
-				onFocus = { hasFocus ->
-					if (hasFocus) {
-						onItemSelected(index)
-					}
-				},
-				onClick = {
-					gridFocusRequester.saveFocusedChild()
-					viewModel.onCardClicked(item)
-				}
+				imageUrl = item.getImageUrl(context, imageHelper, imageType, imageSize.width,imageSize.height),
+				imageType = imageType,
+				index = index,
+				onItemSelected = onItemSelected,
+				focusRequester = focusRequester,
+				viewModel = viewModel
 			)
 		}
 	}
@@ -291,23 +274,70 @@ private fun HorizontalBrowseGrid(
 		rows = GridCells.Fixed(rows),
 		state = gridState,
 		contentPadding = PaddingValues(16.dp),
-		horizontalArrangement = Arrangement.spacedBy(8.dp),
+		horizontalArrangement = Arrangement.spacedBy(16.dp),
+		verticalArrangement = Arrangement.spacedBy(12.dp),
 		modifier = Modifier.padding(top = 16.dp)
 	) {
 
 		itemsIndexed(items) { index, item ->
-			CardPresenter(
+			BrowseGridItem(
 				modifier = Modifier,
 				item = item,
 				imageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
+				imageType = imageType,
 				index = index,
 				onItemSelected = onItemSelected,
 				focusRequester = focusRequester,
-				viewModel = viewModel // Передаем viewModel как параметр
+				viewModel = viewModel
 			)
 		}
 
 	}
+}
+
+@Composable
+private fun BrowseGridItem(
+	modifier: Modifier,
+	item: BaseRowItem,
+	imageUrl: String?,
+	imageType: ImageType,
+	index: Int,
+	onItemSelected: (Int) -> Unit,
+	focusRequester: FocusRequester,
+	viewModel: BrowseGridViewModel
+) {
+
+	val context = LocalContext.current
+
+	val aspectRatio = ImageCardHelper.getAspectRatio(item, imageType)
+
+	ImageCard(
+		modifier =
+			if (index == 0) {
+				Modifier
+					.onGloballyPositioned { coordinates ->
+						viewModel.setImageSize(coordinates.size)
+					}
+			} else
+				Modifier,
+		item = item,
+		mainImageUrl = imageUrl,
+		aspectRatio = aspectRatio,
+		placeholder = ImageCardHelper.getDefaultCardImage(context, item),
+		title = item.getCardName(context),
+		contentText = item.getSubText(context),
+		isFavorite = item.isFavorite,
+		onFocus = { hasFocus ->
+			if (hasFocus) {
+				onItemSelected(index)
+			}
+		},
+		onClick = {
+			focusRequester.saveFocusedChild()
+			viewModel.onCardClicked(item)
+		}
+	)
+
 }
 
 @Composable
@@ -357,42 +387,7 @@ private fun StatusBar(
 }
 
 
-@Composable
-private fun CardPresenter(
-	modifier: Modifier,
-	item: BaseRowItem,
-	imageUrl: String?,
-	index: Int,
-	onItemSelected: (Int) -> Unit,
-	focusRequester: FocusRequester,
-	viewModel: BrowseGridViewModel
-) {
 
-	val context = LocalContext.current
-	ImageCard(
-		modifier =
-//			if (index == 0) {
-//				modifier.focusRequester(focusRequester)
-//			} else
-				modifier,
-		item = item,
-		mainImageUrl = imageUrl,
-		placeholder = ContextCompat.getDrawable(context, R.drawable.ic_movie),
-		title = item.getCardName(context),
-		contentText = item.getSubText(context),
-		isFavorite = item.isFavorite,
-		onFocus = { hasFocus ->
-			if (hasFocus) {
-				onItemSelected(index)
-			}
-		},
-		onClick = {
-			focusRequester.saveFocusedChild()
-			viewModel.onCardClicked(item)
-		}
-	)
-
-}
 
 
 private fun calculateColumns(posterSize: PosterSize, imageType: ImageType): Int {
