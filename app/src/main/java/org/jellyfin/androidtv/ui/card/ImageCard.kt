@@ -1,13 +1,10 @@
 package org.jellyfin.androidtv.ui.card
 
-import android.app.Activity
 import android.graphics.drawable.Drawable
-import android.view.KeyEvent
 import android.widget.ImageView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -33,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,7 +38,6 @@ import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.ui.base.JellyfinTheme
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.composable.AsyncImage
-import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
 import java.text.NumberFormat
 
 @Composable
@@ -53,6 +47,7 @@ fun ImageCard(
 	showInfoOverlay: Boolean = false,
 	mainImageUrl: String? = null,
 	placeholder: Drawable? = null,
+	defaultIconRes: Int? = null,
 	overlayIconRes: Int? = null,
 	overlayText: String? = null,
 	overlayCount: String? = null,
@@ -97,17 +92,36 @@ fun ImageCard(
                 modifier = Modifier
 					.fillMaxWidth()
 					.border(3.dp, borderColor, cardShape)
+					.clip(cardShape)
             ) {
                 // Main Image
-                AsyncImage(
-                    url = mainImageUrl,
-					placeholder = placeholder,
-					scaleType = scaleType,
-                    modifier = Modifier
-						.fillMaxWidth()
-						.aspectRatio(aspectRatio)
-						.clip(cardShape)
-                )
+				if (mainImageUrl != null) {
+					AsyncImage(
+						url = mainImageUrl,
+						scaleType = scaleType,
+						modifier = Modifier
+							.fillMaxWidth()
+							.aspectRatio(aspectRatio)
+
+					)
+				}
+				else {
+					Box(
+						modifier = Modifier
+							.fillMaxWidth()
+							.aspectRatio(aspectRatio)
+							.background(JellyfinTheme.colorScheme.itemFill),
+						contentAlignment = Alignment.Center
+					) {
+						defaultIconRes?.let {
+							Image(
+								painter = painterResource(defaultIconRes),
+								contentDescription = null,
+								modifier = Modifier.size(48.dp)
+							)
+						}
+					}
+				}
 
                 // Overlay
                 if (!showInfo && showInfoOverlay) {
@@ -139,7 +153,6 @@ fun ImageCard(
 								)
 							}
 
-
 							overlayCount?.let {
                                 Text(
                                     text = overlayCount,
@@ -157,7 +170,7 @@ fun ImageCard(
                         modifier = Modifier
 							.align(Alignment.BottomCenter)
 							.fillMaxWidth()
-							.height(2.dp)
+							.height(4.dp)
 							.background(Color.Gray)
                     ) {
                         Box(

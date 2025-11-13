@@ -14,7 +14,7 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 
 data class ImageCardUiState(
 	val imageUrl: String?,
-	val defaultCardImage: Drawable?,
+	val defaultIconRes: Int?,
 	val overlayIconRes: Int? = null,
 	val overlayText: String? = null,
 	val overlayCount: String? = null,
@@ -40,7 +40,7 @@ class ImageCardMapper(
 			overlayIconRes = getOverlayIconRes(item),
 			overlayText = item.getFullName(context),
 			overlayCount = getOverlayCount(item),
-			defaultCardImage = getDefaultCardImage(context, item),
+			defaultIconRes = getDefaultIconRes(item),
 			title = item.getCardName(context),
 			contentText = item.getSubText(context),
 			unwatchedCount = calculateUnwatchedCount(item),
@@ -137,27 +137,20 @@ class ImageCardMapper(
 		return aspect.toFloat()
 	}
 
-	fun getDefaultCardImage(context: Context, item: BaseRowItem): Drawable? {
-
+	fun getDefaultIconRes(item: BaseRowItem): Int? {
 		return when (item.baseRowType) {
 			BaseRowType.BaseItem -> {
 				when (item.baseItem?.type) {
 
 					BaseItemKind.AUDIO,
-					BaseItemKind.MUSIC_ALBUM-> {
-						ContextCompat.getDrawable(context, R.drawable.ic_album)
-					}
+					BaseItemKind.MUSIC_ALBUM-> R.drawable.ic_album
 
 					BaseItemKind.PERSON,
-					BaseItemKind.MUSIC_ARTIST-> {
-						ContextCompat.getDrawable(context, R.drawable.ic_user)
-					}
+					BaseItemKind.MUSIC_ARTIST-> R.drawable.ic_user
 
 					BaseItemKind.SEASON,
 					BaseItemKind.SERIES,
-					BaseItemKind.EPISODE-> {
-						ContextCompat.getDrawable(context, R.drawable.ic_tv)
-					}
+					BaseItemKind.EPISODE-> R.drawable.ic_tv
 
 					BaseItemKind.COLLECTION_FOLDER,
 					BaseItemKind.USER_VIEW,
@@ -165,39 +158,26 @@ class ImageCardMapper(
 					BaseItemKind.GENRE,
 					BaseItemKind.MUSIC_GENRE,
 					BaseItemKind.PHOTO_ALBUM,
-					BaseItemKind.PLAYLIST-> {
-						ContextCompat.getDrawable(context, R.drawable.ic_folder)
-					}
+					BaseItemKind.PLAYLIST-> R.drawable.ic_folder
 
-					BaseItemKind.PHOTO -> {
-						ContextCompat.getDrawable(context, R.drawable.ic_photo)
-					}
+					BaseItemKind.PHOTO -> R.drawable.ic_photo
 
 					BaseItemKind.MOVIE,
-					BaseItemKind.VIDEO-> {
-						ContextCompat.getDrawable(context, R.drawable.ic_clapperboard)
-					}
+					BaseItemKind.VIDEO-> R.drawable.ic_clapperboard
 
-					else -> {
-						ContextCompat.getDrawable(context, R.drawable.ic_folder)
-					}
+					else -> R.drawable.ic_folder
 				}
 			}
 			BaseRowType.LiveTvChannel,
 			BaseRowType.LiveTvProgram,
-			BaseRowType.LiveTvRecording -> {
-				ContextCompat.getDrawable(context, R.drawable.ic_tv)
-			}
-			BaseRowType.Person -> {
-				ContextCompat.getDrawable(context, R.drawable.ic_user)
-			}
+			BaseRowType.LiveTvRecording -> R.drawable.ic_tv
+
+			BaseRowType.Person -> R.drawable.ic_user
+
 			BaseRowType.Chapter,
-			BaseRowType.GridButton -> {
-				ContextCompat.getDrawable(context, R.drawable.ic_clapperboard)
-			}
-			BaseRowType.SeriesTimer -> {
-				ContextCompat.getDrawable(context, R.drawable.ic_tv_timer)
-			}
+			BaseRowType.GridButton -> R.drawable.ic_clapperboard
+
+			BaseRowType.SeriesTimer -> R.drawable.ic_tv_timer
 		}
 	}
 

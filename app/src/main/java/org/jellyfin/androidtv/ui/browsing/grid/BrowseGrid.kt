@@ -228,9 +228,7 @@ private fun VerticalBrowseGrid(
 			BrowseGridItem(
 				modifier = Modifier,
 				item = item,
-				imageUrl = item.getImageUrl(context, imageHelper, imageType, imageSize.width,imageSize.height),
 				uiState = imageCardMapper.mapToUiState(item, imageType, imageSize),
-				imageType = imageType,
 				index = index,
 				onItemSelected = onItemSelected,
 				focusRequester = focusRequester,
@@ -281,9 +279,7 @@ private fun HorizontalBrowseGrid(
 			BrowseGridItem(
 				modifier = Modifier,
 				item = item,
-				imageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
 				uiState = imageCardMapper.mapToUiState(item, imageType, imageSize),
-				imageType = imageType,
 				index = index,
 				onItemSelected = onItemSelected,
 				focusRequester = focusRequester,
@@ -299,16 +295,11 @@ private fun BrowseGridItem(
 	modifier: Modifier,
 	item: BaseRowItem,
 	uiState: ImageCardUiState,
-	imageUrl: String?,
-	imageType: ImageType,
 	index: Int,
 	onItemSelected: (Int) -> Unit,
 	focusRequester: FocusRequester,
 	viewModel: BrowseGridViewModel
 ) {
-
-	val context = LocalContext.current
-
 	ImageCard(
 		modifier =
 			if (index == 0) {
@@ -318,16 +309,16 @@ private fun BrowseGridItem(
 					}
 			} else
 				Modifier,
-		mainImageUrl = imageUrl,
-		placeholder = uiState.defaultCardImage,
+		mainImageUrl = uiState.imageUrl,
+		defaultIconRes = uiState.defaultIconRes,
 		overlayIconRes = uiState.overlayIconRes,
 		overlayCount = uiState.overlayCount,
 		aspectRatio = uiState.aspectRatio,
-		title = item.getCardName(context),
-		contentText = item.getSubText(context),
+		title = uiState.title,
+		contentText = uiState.contentText,
 		unwatchedCount = uiState.unwatchedCount,
 		progress = uiState.progress,
-		isFavorite = item.isFavorite,
+		isFavorite = uiState.isFavorite,
 		onFocus = { hasFocus ->
 			if (hasFocus) {
 				onItemSelected(index)
