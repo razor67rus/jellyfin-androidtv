@@ -43,20 +43,14 @@ import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
 import org.koin.compose.koinInject
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.IntSize
-import androidx.core.content.ContextCompat
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
-import org.jellyfin.androidtv.ui.card.ImageCardHelper
-import timber.log.Timber
+import org.jellyfin.androidtv.ui.card.ImageCardMapper
+import org.jellyfin.androidtv.ui.card.ImageCardUiState
 
 
 @Composable
@@ -93,7 +87,6 @@ fun BrowseGrid(
     LaunchedEffect(Unit) {
         viewModel.setRetrieveListener(lifecycle)
     }
-
 
     Column(
         modifier = Modifier
@@ -197,6 +190,7 @@ private fun VerticalBrowseGrid(
 	val context = LocalContext.current
 	val imageHelper = koinInject<ImageHelper>()
 	val gridState = rememberLazyGridState()
+	val imageCardMapper = remember { ImageCardMapper(context, imageHelper) }
 
 	val imageSize by viewModel.imageSize.collectAsStateWithLifecycle()
 
@@ -235,6 +229,7 @@ private fun VerticalBrowseGrid(
 				modifier = Modifier,
 				item = item,
 				imageUrl = item.getImageUrl(context, imageHelper, imageType, imageSize.width,imageSize.height),
+				uiState = imageCardMapper.mapToUiState(item, imageType, imageSize),
 				imageType = imageType,
 				index = index,
 				onItemSelected = onItemSelected,
@@ -258,6 +253,9 @@ private fun HorizontalBrowseGrid(
 	val context = LocalContext.current
 	val imageHelper = koinInject<ImageHelper>()
 	val gridState = rememberLazyGridState()
+	val imageCardMapper = remember { ImageCardMapper(context, imageHelper) }
+
+	val imageSize by viewModel.imageSize.collectAsStateWithLifecycle()
 
 	// Отслеживаем прокрутку для пагинации
 	LaunchedEffect(gridState, items) {
@@ -284,6 +282,7 @@ private fun HorizontalBrowseGrid(
 				modifier = Modifier,
 				item = item,
 				imageUrl = item.getImageUrl(context, imageHelper, imageType, 200,300),
+				uiState = imageCardMapper.mapToUiState(item, imageType, imageSize),
 				imageType = imageType,
 				index = index,
 				onItemSelected = onItemSelected,
@@ -299,6 +298,7 @@ private fun HorizontalBrowseGrid(
 private fun BrowseGridItem(
 	modifier: Modifier,
 	item: BaseRowItem,
+	uiState: ImageCardUiState,
 	imageUrl: String?,
 	imageType: ImageType,
 	index: Int,
@@ -308,8 +308,6 @@ private fun BrowseGridItem(
 ) {
 
 	val context = LocalContext.current
-
-	val aspectRatio = ImageCardHelper.getAspectRatio(item, imageType)
 
 	ImageCard(
 		modifier =
@@ -322,10 +320,12 @@ private fun BrowseGridItem(
 				Modifier,
 		item = item,
 		mainImageUrl = imageUrl,
-		aspectRatio = aspectRatio,
-		placeholder = ImageCardHelper.getDefaultCardImage(context, item),
+		aspectRatio = uiState.aspectRatio,
+		placeholder = uiState.defaultCardImage,
 		title = item.getCardName(context),
 		contentText = item.getSubText(context),
+		unwatchedCount = uiState.unwatchedCount,
+		progress = uiState.progress,
 		isFavorite = item.isFavorite,
 		onFocus = { hasFocus ->
 			if (hasFocus) {

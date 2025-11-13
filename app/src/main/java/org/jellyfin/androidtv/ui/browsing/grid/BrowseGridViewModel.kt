@@ -19,6 +19,7 @@ import org.jellyfin.androidtv.data.repository.CustomMessageRepository
 import org.jellyfin.androidtv.data.repository.UserViewsRepository
 import org.jellyfin.androidtv.preference.LibraryPreferences
 import org.jellyfin.androidtv.preference.PreferencesRepository
+import org.jellyfin.androidtv.ui.browsing.BrowseGridFragment
 import org.jellyfin.androidtv.ui.browsing.BrowseRowDef
 import org.jellyfin.androidtv.ui.browsing.BrowsingUtils
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
@@ -30,7 +31,6 @@ import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.CollectionType
 import org.jellyfin.sdk.model.api.ItemSortBy
 import org.jellyfin.sdk.model.api.SortOrder
-import org.koin.compose.koinInject
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import timber.log.Timber
@@ -66,7 +66,6 @@ class BrowseGridViewModel(
 
     private val preferencesRepository: PreferencesRepository by inject()
 	private val userViewsRepository: UserViewsRepository by inject()
-	private val customMessageRepository: CustomMessageRepository by inject()
 	private val itemLauncher: ItemLauncher by inject()
 
 	private var adapterWrapper: ItemRowAdapterWrapper? = null
@@ -228,10 +227,10 @@ class BrowseGridViewModel(
     }
 
 	fun setSortBy(option: SortOption) {
-//		viewModelScope.launch {
-//			adapterWrapper?.setSortBy(option.value, option.order)
-//			adapterWrapper?.retrieve()
-//		}
+		viewModelScope.launch {
+			adapterWrapper?.setSortBy(BrowseGridFragment.SortOption(option.name, option.value, option.order))
+			adapterWrapper?.retrieve()
+		}
 	}
 
 	fun loadMoreItemsIfNeeded(position: Int) {

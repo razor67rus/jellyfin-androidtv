@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -83,8 +84,9 @@ fun ImageCard(
     Box(
         modifier = modifier
 			.onFocusChanged { onFocus(it.isFocused) }
-			.clickable(
+			.combinedClickable(
 				onClick = onClick,
+				onLongClick = onLongClick,
 				indication = null,
 				interactionSource = interactionSource,
 			)
@@ -268,13 +270,4 @@ fun ImageCard(
         }
     }
 
-    // Long click handler
-    DisposableEffect(Unit) {
-        onDispose {
-            val activity = context.getActivity() as? Activity
-            activity?.let {
-                it.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MENU))
-            }
-        }
-    }
 }
