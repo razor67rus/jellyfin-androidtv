@@ -318,10 +318,11 @@ private fun BrowseGridItem(
 					}
 			} else
 				Modifier,
-		item = item,
 		mainImageUrl = imageUrl,
-		aspectRatio = uiState.aspectRatio,
 		placeholder = uiState.defaultCardImage,
+		overlayIconRes = uiState.overlayIconRes,
+		overlayCount = uiState.overlayCount,
+		aspectRatio = uiState.aspectRatio,
 		title = item.getCardName(context),
 		contentText = item.getSubText(context),
 		unwatchedCount = uiState.unwatchedCount,

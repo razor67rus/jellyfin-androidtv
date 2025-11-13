@@ -43,21 +43,21 @@ import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.ui.base.JellyfinTheme
 import org.jellyfin.androidtv.ui.base.Text
 import org.jellyfin.androidtv.ui.composable.AsyncImage
-import org.jellyfin.androidtv.ui.itemhandling.BaseItemDtoBaseRowItem
 import org.jellyfin.androidtv.ui.itemhandling.BaseRowItem
-import org.jellyfin.androidtv.util.getActivity
-import org.jellyfin.sdk.model.api.BaseItemKind
 import java.text.NumberFormat
 
 @Composable
 fun ImageCard(
 	modifier: Modifier,
 	showInfo: Boolean = true,
-	item: BaseRowItem? = null,
+	showInfoOverlay: Boolean = false,
 	mainImageUrl: String? = null,
+	placeholder: Drawable? = null,
+	overlayIconRes: Int? = null,
+	overlayText: String? = null,
+	overlayCount: String? = null,
 	aspectRatio: Float = 2f / 3f,
 	scaleType: ImageView.ScaleType = ImageView.ScaleType.CENTER_CROP,
-	placeholder: Drawable? = null,
 	title: String? = null,
 	contentText: String? = null,
 	rating: String? = null,
@@ -69,7 +69,6 @@ fun ImageCard(
 	onLongClick: () -> Unit = {},
 	onFocus: (isFocused: Boolean) -> Unit = {}
 ) {
-    val context = LocalContext.current
 	val nf = remember { NumberFormat.getInstance() }
 	val interactionSource = remember { MutableInteractionSource() }
 
@@ -111,7 +110,7 @@ fun ImageCard(
                 )
 
                 // Overlay
-                if (!showInfo && item != null && item.showCardInfoOverlay) {
+                if (!showInfo && showInfoOverlay) {
                     Box(
                         modifier = Modifier
 							.align(Alignment.BottomCenter)
@@ -122,33 +121,28 @@ fun ImageCard(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val iconRes = when (item.baseItem?.type) {
-                                BaseItemKind.PHOTO -> R.drawable.ic_camera
-                                BaseItemKind.PHOTO_ALBUM -> R.drawable.ic_photos
-                                BaseItemKind.VIDEO -> R.drawable.ic_movie
-                                BaseItemKind.FOLDER -> R.drawable.ic_folder
-                                else -> null
-                            }
+							overlayIconRes?.let{
+								Image(
+									painter = painterResource(overlayIconRes),
+									contentDescription = null,
+									modifier = Modifier.size(24.dp)
+								)
+								Spacer(modifier = Modifier.width(8.dp))
+							}
 
-                            if (iconRes != null) {
-                                Image(
-                                    painter = painterResource(iconRes),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
+                            overlayText?.let{
+								Text(
+									text = overlayText,
+									color = Color.White,
+									maxLines = 1,
+									overflow = TextOverflow.Ellipsis
+								)
+							}
 
-                            Text(
-                                text = "${item.getFullName(context)}",
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
 
-                            if (item is BaseItemDtoBaseRowItem) {
+							overlayCount?.let {
                                 Text(
-                                    text = item.childCountStr ?: "",
+                                    text = overlayCount,
                                     color = Color.White,
                                     modifier = Modifier.padding(start = 8.dp)
                                 )

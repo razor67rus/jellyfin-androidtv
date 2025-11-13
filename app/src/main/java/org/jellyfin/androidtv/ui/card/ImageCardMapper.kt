@@ -15,6 +15,9 @@ import org.jellyfin.sdk.model.api.BaseItemKind
 data class ImageCardUiState(
 	val imageUrl: String?,
 	val defaultCardImage: Drawable?,
+	val overlayIconRes: Int? = null,
+	val overlayText: String? = null,
+	val overlayCount: String? = null,
 	val title: String?,
 	val contentText: String?,
 	val unwatchedCount: Int,
@@ -34,6 +37,9 @@ class ImageCardMapper(
 	): ImageCardUiState {
 		return ImageCardUiState(
 			imageUrl = item.getImageUrl(context, imageHelper, imageType, imageSize.width, imageSize.height),
+			overlayIconRes = getOverlayIconRes(item),
+			overlayText = item.getFullName(context),
+			overlayCount = getOverlayCount(item),
 			defaultCardImage = getDefaultCardImage(context, item),
 			title = item.getCardName(context),
 			contentText = item.getSubText(context),
@@ -44,6 +50,12 @@ class ImageCardMapper(
 		)
 	}
 
+	private fun getOverlayCount(item: BaseRowItem): String? {
+		return if (item is BaseItemDtoBaseRowItem) {
+			item.childCountStr
+		} else null
+
+	}
 	private fun calculateUnwatchedCount(item: BaseRowItem): Int {
 		return when (item.baseItem?.type) {
 			BaseItemKind.SERIES -> {
@@ -186,6 +198,16 @@ class ImageCardMapper(
 			BaseRowType.SeriesTimer -> {
 				ContextCompat.getDrawable(context, R.drawable.ic_tv_timer)
 			}
+		}
+	}
+
+	private fun getOverlayIconRes(item: BaseRowItem): Int? {
+		return when (item.baseItem?.type) {
+			BaseItemKind.PHOTO -> R.drawable.ic_camera
+			BaseItemKind.PHOTO_ALBUM -> R.drawable.ic_photos
+			BaseItemKind.VIDEO -> R.drawable.ic_movie
+			BaseItemKind.FOLDER -> R.drawable.ic_folder
+			else -> null
 		}
 	}
 }
