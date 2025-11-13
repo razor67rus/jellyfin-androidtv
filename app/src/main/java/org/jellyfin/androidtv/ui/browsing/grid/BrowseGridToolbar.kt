@@ -24,9 +24,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -36,9 +37,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import org.jellyfin.androidtv.R
 import org.jellyfin.sdk.model.api.ItemSortBy
-
-
-
 
 @Composable
 fun BrowseGridToolbar(
@@ -57,7 +55,6 @@ fun BrowseGridToolbar(
 	onSettingsClick: () -> Unit
 ) {
 	var showSortDialog by remember { mutableStateOf(false) }
-	val context = LocalContext.current
 
 	Row(
 		modifier = modifier
@@ -165,12 +162,7 @@ private fun SortDialog(
 	onDismiss: () -> Unit,
 	onSortSelected: (SortOption) -> Unit
 ) {
-//	val focusRequester = remember { FocusRequester() }
-
-	// Автоматически фокусируемся на первом элементе
-//	LaunchedEffect(Unit) {
-//		focusRequester.requestFocus()
-//	}
+	val focusRequester = remember { FocusRequester() }
 
 	Dialog(
 		onDismissRequest = onDismiss,
@@ -180,26 +172,19 @@ private fun SortDialog(
 			usePlatformDefaultWidth = false
 		)
 	) {
-		// Полупрозрачный фон
 		Box(
 			modifier = Modifier
 				.fillMaxWidth()
-				.clickable(
-					interactionSource = remember { MutableInteractionSource() },
-					indication = null,
-					onClick = onDismiss
-				)
-				.background(Color.Black.copy(alpha = 0.7f)),
+				.background(Color.Black.copy(alpha = 0.7f))
+				.focusRequester(focusRequester),
 			contentAlignment = Alignment.Center
 		) {
-			// Диалоговое окно
 			Column(
 				modifier = Modifier
 					.width(400.dp)
 					.background(Color(0xFF1A1A1A), RoundedCornerShape(12.dp))
 					.padding(24.dp)
 			) {
-				// Заголовок
 				BasicText(
 					text = stringResource(R.string.lbl_sort_by),
 					style = TextStyle(
@@ -208,17 +193,10 @@ private fun SortDialog(
 					),
 					modifier = Modifier.padding(bottom = 16.dp)
 				)
-
-				// Список опций сортировки
 				sortOptions.forEachIndexed { index, option ->
 					SortOptionItem(
 						option = option,
 						isSelected = option.value == currentSortBy,
-//						modifier = if (index == 0) {
-//							Modifier.focusRequester(focusRequester)
-//						} else {
-//							Modifier
-//						},
 						onClick = { onSortSelected(option) }
 					)
 				}
@@ -234,30 +212,24 @@ private fun SortOptionItem(
 	modifier: Modifier = Modifier,
 	onClick: () -> Unit
 ) {
-//	val interactionSource = remember { MutableInteractionSource() }
-//	val isFocused by interactionSource.collectIsFocusedAsState()
+	val interactionSource = remember { MutableInteractionSource() }
+	val isFocused by interactionSource.collectIsFocusedAsState()
 
 	Row(
 		modifier = modifier
-//			.focusable(interactionSource = interactionSource)
 			.clickable(
-//				interactionSource = interactionSource,
-//				indication = null,
+				interactionSource = interactionSource,
 				onClick = onClick
 			)
+			.focusable(interactionSource = interactionSource)
 			.background(
 				when {
-//					isFocused -> Color.White.copy(alpha = 0.3f)
+					isFocused -> Color.White.copy(alpha = 0.3f)
 					isSelected -> Color.White.copy(alpha = 0.1f)
 					else -> Color.Transparent
 				},
 				RoundedCornerShape(8.dp)
 			)
-//			.border(
-//				width = 3.dp,
-////				color = if (isFocused) JellyfinTheme.colorScheme.onInputFocused else Color.Transparent,
-//				shape = RoundedCornerShape(8.dp)
-//			)
 			.padding(horizontal = 16.dp, vertical = 12.dp),
 		verticalAlignment = Alignment.CenterVertically
 	) {
@@ -280,7 +252,6 @@ private fun SortOptionItem(
 				)
 			}
 		}
-
 		// Текст опции
 		BasicText(
 			text = option.name,
