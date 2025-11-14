@@ -3,7 +3,6 @@ package org.jellyfin.androidtv.ui.playback;
 import static org.koin.java.KoinJavaComponent.get;
 import static org.koin.java.KoinJavaComponent.inject;
 
-import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Handler;
@@ -72,7 +71,6 @@ public class PlaybackController implements PlaybackControllerNotifiable {
     List<BaseItemDto> mItems;
     VideoManager mVideoManager;
     int mCurrentIndex;
-    int mLastIndex;
     protected long mCurrentPosition = 0;
     private PlaybackState mPlaybackState = PlaybackState.IDLE;
 
@@ -263,7 +261,6 @@ public class PlaybackController implements PlaybackControllerNotifiable {
         }
     }
 
-    @TargetApi(23)
     private void getDisplayModes() {
         if (mFragment == null)
             return;
@@ -275,7 +272,6 @@ public class PlaybackController implements PlaybackControllerNotifiable {
         }
     }
 
-    @TargetApi(23)
     private Display.Mode findBestDisplayMode(MediaStream videoStream) {
         if (mFragment == null || mDisplayModes == null || videoStream.getRealFrameRate() == null)
             return null;
@@ -332,7 +328,6 @@ public class PlaybackController implements PlaybackControllerNotifiable {
         return bestMode;
     }
 
-    @TargetApi(23)
     private void setRefreshRate(MediaStream videoStream) {
         if (videoStream == null || mFragment == null) {
             Timber.e("Null video stream attempting to set refresh rate");
@@ -612,11 +607,12 @@ public class PlaybackController implements PlaybackControllerNotifiable {
             return;
         }
 
-        if (mCurrentIndex != mLastIndex) {
-            clearPlaybackSessionOptions();
-            mCurrentOptions.setAudioStreamIndex(null);
-            mLastIndex = mCurrentIndex;
-        }
+        // Clear last set audio stream index on start of every item.
+        // We cannot clear all options because baking in subs during transcoding
+        // will restart playback and this will end in an infinite loop.
+        // see@[PlaybackController.setSubtitleIndex]
+        // Not nice but will do it until the new playback rewrite is also available for video
+        mCurrentOptions.setAudioStreamIndex(null);
 
         mStartPosition = position;
         mCurrentStreamInfo = response;
@@ -1150,6 +1146,7 @@ public class PlaybackController implements PlaybackControllerNotifiable {
     }
 
     private void itemComplete() {
+        interactionTracker.onEpisodeWatched();
         stop();
         resetPlayerErrors();
 
@@ -1249,7 +1246,6 @@ public class PlaybackController implements PlaybackControllerNotifiable {
 
     @Override
     public void onCompletion() {
-        interactionTracker.onEpisodeWatched();
         Timber.d("On Completion fired");
         itemComplete();
     }
