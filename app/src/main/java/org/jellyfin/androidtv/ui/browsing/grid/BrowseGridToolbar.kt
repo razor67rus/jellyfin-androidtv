@@ -233,7 +233,7 @@ private fun SortOptionItem(
 			.padding(horizontal = 16.dp, vertical = 12.dp),
 		verticalAlignment = Alignment.CenterVertically
 	) {
-		// Радиокнопка
+		// RadioButton
 		Box(
 			modifier = Modifier
 				.size(24.dp)
@@ -252,7 +252,7 @@ private fun SortOptionItem(
 				)
 			}
 		}
-		// Текст опции
+		// Option text
 		BasicText(
 			text = option.name,
 			style = TextStyle(

@@ -1,7 +1,6 @@
 package org.jellyfin.androidtv.ui.itemhandling
 
 import android.content.Context
-import androidx.leanback.widget.ObjectAdapter
 import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +18,6 @@ import org.jellyfin.androidtv.util.apiclient.EmptyResponse
 import org.jellyfin.sdk.model.api.ItemSortBy
 import timber.log.Timber
 
-// Исправленный wrapper для ItemRowAdapter
 class ItemRowAdapterWrapper(
 	private val adapter: ItemRowAdapter,
 	private val coroutineScope: CoroutineScope
@@ -46,7 +44,6 @@ class ItemRowAdapterWrapper(
 	val sortBy: StateFlow<ItemSortBy?> = _sortBy.asStateFlow()
 
 	fun setRetrieveListener(lifecycle: Lifecycle) {
-		// Слушаем завершение загрузки
 		adapter.setRetrieveFinishedListener(object : EmptyResponse(lifecycle) {
 			override fun onResponse() {
 				_isLoading.value = false
@@ -116,7 +113,6 @@ class ItemRowAdapterWrapper(
 
 	fun refreshItem(item: BaseRowItem, onComplete: () -> Unit) {
 		coroutineScope.launch {
-			// Логика обновления элемента
 			onComplete()
 		}
 	}
@@ -142,7 +138,7 @@ class ItemRowAdapterWrapper(
 				QueryType.AlbumArtists -> ItemRowAdapter(context, rowDef.albumArtistsQuery, chunkSize, cardPresenter, null);
 				else -> ItemRowAdapter(context, rowDef.query, chunkSize, rowDef.preferParentThumb, rowDef.isStaticHeight, cardPresenter, null);
 			}
-			// Применяем сохраненные фильтры и сортировку
+
 			val filters = FilterOptions().apply {
 				isFavoriteOnly = libraryPreferences[LibraryPreferences.filterFavoritesOnly]
 				isUnwatchedOnly = libraryPreferences[LibraryPreferences.filterUnwatchedOnly]

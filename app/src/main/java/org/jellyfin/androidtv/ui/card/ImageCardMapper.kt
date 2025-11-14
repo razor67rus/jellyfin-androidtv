@@ -1,9 +1,7 @@
 package org.jellyfin.androidtv.ui.card
 
 import android.content.Context
-import android.graphics.drawable.Drawable
 import androidx.compose.ui.unit.IntSize
-import androidx.core.content.ContextCompat
 import org.jellyfin.androidtv.R
 import org.jellyfin.androidtv.constant.ImageType
 import org.jellyfin.androidtv.ui.itemhandling.BaseItemDtoBaseRowItem
@@ -56,16 +54,17 @@ class ImageCardMapper(
 		} else null
 
 	}
+
 	private fun calculateUnwatchedCount(item: BaseRowItem): Int {
 		return when (item.baseItem?.type) {
 			BaseItemKind.SERIES -> {
-				item.baseItem?.userData?.unplayedItemCount ?: -1
+				item.baseItem.userData?.unplayedItemCount ?: -1
 			}
 			BaseItemKind.MOVIE -> {
-				if (item.baseItem?.userData?.played == true) 0 else -1
+				if (item.baseItem.userData?.played == true) 0 else -1
 			}
 			BaseItemKind.SEASON -> {
-				item.baseItem?.userData?.unplayedItemCount ?: -1
+				item.baseItem.userData?.unplayedItemCount ?: -1
 			}
 			else -> -1
 		}

@@ -5,7 +5,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -194,7 +193,7 @@ private fun VerticalBrowseGrid(
 
 	val imageSize by viewModel.imageSize.collectAsStateWithLifecycle()
 
-	// Ожидание первой видимой ячейки для установки фокуса
+	// Waiting for the first visible cell to set the focus
 	LaunchedEffect(gridState) {
 		snapshotFlow { gridState.layoutInfo.visibleItemsInfo.isNotEmpty() }
 			.filter { it }
@@ -202,7 +201,7 @@ private fun VerticalBrowseGrid(
 		focusRequester.requestFocus()
 	}
 
-	// Отслеживаем прокрутку для пагинации
+	// Tracking scrolling for pagination
 	LaunchedEffect(gridState, items) {
 		snapshotFlow {
 			gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -255,7 +254,15 @@ private fun HorizontalBrowseGrid(
 
 	val imageSize by viewModel.imageSize.collectAsStateWithLifecycle()
 
-	// Отслеживаем прокрутку для пагинации
+	// Waiting for the first visible cell to set the focus
+	LaunchedEffect(gridState) {
+		snapshotFlow { gridState.layoutInfo.visibleItemsInfo.isNotEmpty() }
+			.filter { it }
+			.first()
+		focusRequester.requestFocus()
+	}
+
+	// Tracking scrolling for pagination
 	LaunchedEffect(gridState, items) {
 		snapshotFlow {
 			gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -269,12 +276,13 @@ private fun HorizontalBrowseGrid(
 	LazyHorizontalGrid(
 		rows = GridCells.Fixed(rows),
 		state = gridState,
-		contentPadding = PaddingValues(16.dp),
 		horizontalArrangement = Arrangement.spacedBy(16.dp),
 		verticalArrangement = Arrangement.spacedBy(12.dp),
-		modifier = Modifier.padding(top = 16.dp)
+		modifier = Modifier
+			.focusGroup()
+			.focusRestorer()
+			.focusRequester(focusRequester)
 	) {
-
 		itemsIndexed(items) { index, item ->
 			BrowseGridItem(
 				modifier = Modifier,
@@ -377,9 +385,6 @@ private fun StatusBar(
         )
     }
 }
-
-
-
 
 
 private fun calculateColumns(posterSize: PosterSize, imageType: ImageType): Int {
