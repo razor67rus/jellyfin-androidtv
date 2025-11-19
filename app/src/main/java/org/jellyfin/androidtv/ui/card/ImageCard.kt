@@ -177,7 +177,7 @@ fun ImageCard(
                             modifier = Modifier
 								.fillMaxHeight()
 								.fillMaxWidth(progress / 100f)
-								.background(Color.White)
+								.background(JellyfinTheme.colorScheme.accent)
                         )
                     }
                 }
